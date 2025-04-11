@@ -379,7 +379,7 @@ function startDemo() {
 function stopDemo() {
     clearTimeout(demoTimeout);
     isDemo = false;
-    demoButton.innerHTML = '<i class="fas fa-play"></i> Demo İzle';
+    demoButton.innerHTML = '<i class="fas fa-play"></i> Watch Demo';
     demoButton.classList.remove('active');
     resetGame();
 }
