@@ -566,17 +566,16 @@ function wouldCollide(pos) {
 }
 
 // Update the button click handlers
-function handleButtonClick(direction) {
-    if (!gameStarted && !isDemo) {
-        startGame();
-    }
-
-    if (!gameStarted || isDemo) return;
-
-    const newMove = getDirectionFromInput(direction);
-    if (isValidNextMove(newMove)) {
-        addToMoveQueue(newMove);
-    }
+function handleButtonClick(e) {
+    // This will run on desktop
+    const buttonId = e.currentTarget.id;
+    
+    // Don't need to repeat the logic as the original event listeners will handle it
+    // This is just for visual feedback
+    e.currentTarget.style.opacity = '0.7';
+    setTimeout(() => {
+        e.currentTarget.style.opacity = '1';
+    }, 150);
 }
 
 // Add demo button event listener
@@ -713,5 +712,70 @@ function upgradeToPremium() {
   });
 }
 
-// Start the game
-init(); 
+// Add these functions to improve button handling
+function setupButtonListeners() {
+    // Get all game buttons
+    const gameButtons = document.querySelectorAll('.game-btn');
+    
+    // Add event listeners to each button
+    gameButtons.forEach(button => {
+        // Remove any existing listeners
+        button.removeEventListener('touchstart', handleButtonTouch);
+        button.removeEventListener('click', handleButtonClick);
+        
+        // Add touchstart listener for mobile
+        button.addEventListener('touchstart', handleButtonTouch, { passive: false });
+        
+        // Add click listener for desktop
+        button.addEventListener('click', handleButtonClick);
+    });
+}
+
+function handleButtonTouch(e) {
+    e.preventDefault(); // Prevent default touch behavior
+    
+    // Get button ID
+    const buttonId = e.currentTarget.id;
+    
+    // Handle button action based on ID
+    switch(buttonId) {
+        case 'playAgain':
+            resetGame();
+            break;
+        case 'demoButton':
+            if (isDemo) {
+                stopDemo();
+            } else {
+                startDemo();
+            }
+            break;
+        case 'showLeaderboard':
+            updateLeaderboard();
+            leaderboardDiv.style.display = 'block';
+            break;
+    }
+    
+    // Add visual feedback
+    e.currentTarget.style.opacity = '0.7';
+    setTimeout(() => {
+        e.currentTarget.style.opacity = '1';
+    }, 150);
+}
+
+// Call this function when the page loads
+document.addEventListener('DOMContentLoaded', function() {
+    setupButtonListeners();
+    
+    // Prevent unwanted page scrolling/zooming on touch devices
+    document.addEventListener('touchmove', function(e) {
+        if (e.target.classList.contains('game-btn') || e.target.classList.contains('control-btn')) {
+            e.preventDefault();
+        }
+    }, { passive: false });
+    
+    // Setup original game
+    resizeCanvas();
+    randomFood();
+    draw();
+    updateLeaderboard();
+}); 
