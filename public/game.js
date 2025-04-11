@@ -184,15 +184,14 @@ function gameOver() {
     clearInterval(gameLoop);
     gameLoop = null;
     gameStarted = false;
+    document.body.classList.remove('game-active');
     
     const finalScore = document.getElementById('finalScore');
-    const level = Math.floor(foodCount / 10) + 1;
     finalScore.innerHTML = `
-        <span class="score-text">Score: ${score}</span><br>
-        <span class="level-text">Level ${level}</span>
+        <span class="score-text">Score: ${score}</span>
+        <span class="level-text">Level ${Math.floor(foodCount / 10) + 1}</span>
     `;
     modal.style.display = 'block';
-    playAgainBtn.style.display = 'block';
 }
 
 function resetGame() {
@@ -206,14 +205,10 @@ function resetGame() {
     foodCount = 0;
     speed = baseSpeed;
     gameStarted = false;
+    document.body.classList.remove('game-active');
     updateScoreDisplay();
     playAgainBtn.style.display = 'none';
     modal.style.display = 'none';
-    
-    // Reset button states
-    demoButton.classList.remove('active');
-    demoButton.textContent = 'Watch Demo';
-    
     randomFood();
     draw();
 }
@@ -262,6 +257,7 @@ function handleTouchMove(e) {
 function startGame() {
     if (!gameStarted) {
         gameStarted = true;
+        document.body.classList.add('game-active');
         if (gameLoop) clearInterval(gameLoop);
         gameLoop = setInterval(update, 1000 / speed);
     }
