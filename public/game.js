@@ -62,7 +62,7 @@ let moveQueue = []; // Queue for buffering moves
 const QUEUE_MAX_LENGTH = 2; // Maximum number of moves to buffer
 
 // Add these constants at the top
-const DEMO_MOVE_DELAY = 50;
+const DEMO_MOVE_DELAY = 100;
 const FOOD_WEIGHT = 1000;  // Increased priority for food
 
 // Add premium features
@@ -80,6 +80,9 @@ const premiumFeatures = {
   customThemes: true,
   multiplayerMode: true
 };
+
+// Demo için sabitler
+const DEMO_MAX_LEVEL = 5;   // Demo maksimum seviye
 
 function resizeCanvas() {
     const size = canvas.width;
@@ -355,24 +358,28 @@ function handleScoreSubmission() {
 function startDemo() {
     resetGame();
     isDemo = true;
-    demoButton.innerHTML = '<i class="fas fa-stop"></i> Stop Demo';
+    demoButton.innerHTML = '<i class="fas fa-stop"></i> Demo Durdur';
     demoButton.classList.add('active');
     
-    snake = [{ x: 2, y: 2 }];
-    dx = 1;
+    // Start from a strategic position
+    snake = [{ x: 5, y: 5 }];
+    dx = 1; // Başlangıçta sağa doğru hareket et
     dy = 0;
     gameStarted = true;
     speed = baseSpeed;
     
+    // Game loop'u başlat
     if (gameLoop) clearInterval(gameLoop);
     gameLoop = setInterval(update, 1000 / speed);
-    runDemoMove();
+    
+    // Demo hareketi başlat
+    setTimeout(runDemoMove, DEMO_MOVE_DELAY);
 }
 
 function stopDemo() {
     clearTimeout(demoTimeout);
     isDemo = false;
-    demoButton.innerHTML = '<i class="fas fa-play"></i> Watch Demo';
+    demoButton.innerHTML = '<i class="fas fa-play"></i> Demo İzle';
     demoButton.classList.remove('active');
     resetGame();
 }
@@ -381,87 +388,123 @@ function runDemoMove() {
     if (!isDemo) return;
     
     const head = snake[0];
-    const nextMove = getNextMove(head);
     
+    // Mevcut seviyeyi kontrol et
+    const currentLevel = Math.floor(foodCount / 10) + 1;
+    if (currentLevel > DEMO_MAX_LEVEL) {
+        stopDemo();
+        alert(`Demo tamamlandı! Seviye ${DEMO_MAX_LEVEL}'e ulaşıldı.`);
+        return;
+    }
+    
+    // En iyi hamleyi bul
+    const nextMove = findBestMove(head);
+    
+    // Yönü güncelle
     dx = nextMove.dx;
     dy = nextMove.dy;
     
+    // Sonraki hamle için planlama yap
     demoTimeout = setTimeout(runDemoMove, DEMO_MOVE_DELAY);
 }
 
-function getNextMove(head) {
-    // Get distances to food
+function findBestMove(head) {
+    // Yemeğe olan mesafe
     const xDist = food.x - head.x;
     const yDist = food.y - head.y;
     
-    // Try to move directly towards food first
+    // Olası hamleleri topla
     const possibleMoves = getPossibleMoves(head);
     
-    // Sort moves by how close they get to food
-    possibleMoves.sort((a, b) => {
-        const posA = {
-            x: (head.x + a.dx + tileCount) % tileCount,
-            y: (head.y + a.dy + tileCount) % tileCount
-        };
-        const posB = {
-            x: (head.x + b.dx + tileCount) % tileCount,
-            y: (head.y + b.dy + tileCount) % tileCount
+    // Eğer herhangi bir güvenli hamle yoksa, son çare olarak mevcut yönde devam et
+    if (possibleMoves.length === 0) {
+        return { dx, dy };
+    }
+    
+    // Hareketleri yemeğe olan mesafeye göre sırala
+    possibleMoves.sort((moveA, moveB) => {
+        const nextPosA = {
+            x: (head.x + moveA.dx + tileCount) % tileCount,
+            y: (head.y + moveA.dy + tileCount) % tileCount
         };
         
-        const distA = getManhattanDistance(posA, food);
-        const distB = getManhattanDistance(posB, food);
+        const nextPosB = {
+            x: (head.x + moveB.dx + tileCount) % tileCount,
+            y: (head.y + moveB.dy + tileCount) % tileCount
+        };
+        
+        const distA = getManhattanDistance(nextPosA, food);
+        const distB = getManhattanDistance(nextPosB, food);
         
         return distA - distB;
     });
-
-    // Find the best safe move that gets us closer to food
+    
+    // Yemeğe yaklaşmayı ve güvenliği dengele
     for (const move of possibleMoves) {
-        const newPos = {
-            x: (head.x + move.dx + tileCount) % tileCount,
-            y: (head.y + move.dy + tileCount) % tileCount
-        };
-        
-        if (isSafeMove(head, move)) {
-            const newDist = getManhattanDistance(newPos, food);
-            const currentDist = getManhattanDistance(head, food);
-            
-            // Take this move if it gets us closer or maintains distance but is safe
-            if (newDist <= currentDist) {
-                return move;
-            }
+        if (isSuperSafe(head, move)) {
+            return move;
         }
     }
-
-    // If no good moves towards food, take any safe move
+    
+    // En güvenli hamleyi bulamadıysak, en azından çarpmayan bir hamle yapalım
     for (const move of possibleMoves) {
         if (isSafeMove(head, move)) {
             return move;
         }
     }
-
-    // Last resort: take the first possible move
+    
+    // Son çare olarak ilk olası hamleyi dön
     return possibleMoves[0];
 }
 
 function getPossibleMoves(head) {
     return [
-        { dx: 1, dy: 0 },   // right
-        { dx: 0, dy: 1 },   // down
-        { dx: -1, dy: 0 },  // left
-        { dx: 0, dy: -1 }   // up
+        { dx: 1, dy: 0 },   // sağ
+        { dx: 0, dy: 1 },   // aşağı
+        { dx: -1, dy: 0 },  // sol
+        { dx: 0, dy: -1 }   // yukarı
     ].filter(move => {
+        // Mevcut yönün tersi olamaz
+        if ((move.dx === -dx && move.dy === -dy) && (dx !== 0 || dy !== 0)) {
+            return false;
+        }
+        
         const nextPos = {
             x: (head.x + move.dx + tileCount) % tileCount,
             y: (head.y + move.dy + tileCount) % tileCount
         };
+        
         return !wouldCollide(nextPos);
     });
 }
 
 function getManhattanDistance(pos1, pos2) {
-    const dx = Math.abs(pos1.x - pos2.x);
-    const dy = Math.abs(pos1.y - pos2.y);
+    let dx = Math.abs(pos1.x - pos2.x);
+    let dy = Math.abs(pos1.y - pos2.y);
+    
+    // Ekranın kenarlarından geçiş imkanını hesaba kat
+    dx = Math.min(dx, tileCount - dx);
+    dy = Math.min(dy, tileCount - dy);
+    
     return dx + dy;
+}
+
+function isSuperSafe(head, move) {
+    const nextPos = {
+        x: (head.x + move.dx + tileCount) % tileCount,
+        y: (head.y + move.dy + tileCount) % tileCount
+    };
+    
+    // Çarpışma kontrolü
+    if (wouldCollide(nextPos)) {
+        return false;
+    }
+    
+    // Kullanılabilir alanı hesapla
+    const space = calculateAvailableSpace(nextPos);
+    
+    // Yılan uzunluğu + güvenlik payı kadar alan olmalı
+    return space > snake.length * 1.5;
 }
 
 function isSafeMove(head, move) {
@@ -470,19 +513,12 @@ function isSafeMove(head, move) {
         y: (head.y + move.dy + tileCount) % tileCount
     };
     
-    // Check immediate collision
-    if (wouldCollide(nextPos)) {
-        return false;
-    }
-    
-    // Check if enough space is available
-    const space = calculateAvailableSpace(nextPos);
-    return space > snake.length + 2;
+    return !wouldCollide(nextPos);
 }
 
-function calculateAvailableSpace(pos) {
+function calculateAvailableSpace(startPos) {
     const visited = new Set();
-    const queue = [pos];
+    const queue = [startPos];
     let space = 0;
     
     while (queue.length > 0) {
