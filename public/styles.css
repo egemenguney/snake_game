@@ -1,43 +1,40 @@
 /* Import Google Fonts */
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Press+Start+2P&display=swap');
 
+/* Base styles */
 * {
     box-sizing: border-box;
-    user-select: none;
+    margin: 0;
+    padding: 0;
 }
 
-body {
+html, body {
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
     margin: 0;
     padding: 0;
     background-color: #1e1e1e;
     font-family: 'Press Start 2P', cursive;
-    height: 100vh;
-    width: 100%;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    position: relative;
-    z-index: 0;
 }
 
-/* Main game container */
+/* Main container with grid layout */
 .game-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: space-between;
-    width: 100%;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
     height: 100vh;
-    padding: 0;
-    position: relative;
+    width: 100vw;
+    overflow: hidden;
 }
 
-/* Score section at top */
+/* Header section for score */
 .score-section {
+    grid-row: 1;
     width: 100%;
-    padding: 5px 0;
+    padding: 5px;
+    background-color: #1e1e1e;
     z-index: 20;
-    background-color: rgba(30, 30, 30, 0.9);
+    border-bottom: 1px solid #333;
 }
 
 .score {
@@ -46,251 +43,174 @@ body {
     justify-content: center;
     align-items: center;
     gap: 15px;
-    text-align: center;
-    width: 100%;
-    padding: 5px;
     height: 30px;
 }
 
 .score-text {
     color: #00ff00;
-    font-family: 'Press Start 2P', cursive;
     font-size: 0.8rem;
-    text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
 }
 
 .level-text {
     color: #ffffff;
-    font-family: 'Press Start 2P', cursive;
     font-size: 0.7rem;
-    text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
 }
 
-/* Gameplay area in middle */
+/* Main game area */
 .gameplay-section {
-    flex: 1;
+    grid-row: 2;
+    width: 100%;
     display: flex;
     justify-content: center;
     align-items: center;
-    width: 100%;
-    margin: 10px 0;
-    padding: 0;
-    overflow: visible;
-    position: relative;
-    min-height: 200px;
+    overflow: hidden;
 }
 
 #gameCanvas {
-    width: min(90vmin, 350px);
-    height: min(90vmin, 350px);
+    max-width: 90vmin;
+    max-height: 90vmin;
+    aspect-ratio: 1 / 1;
     border: 2px solid #333;
-    border-radius: 5px;
-    display: block;
-    background-color: #2d2d2d;
 }
 
-/* Controls section at bottom */
+/* Controls and buttons section */
 .controls-section {
-    width: 100%;
-    padding-bottom: 10px;
-    margin-top: 5px;
-    min-height: 170px;
-    position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
-    background-color: rgba(30, 30, 30, 0.9);
-    z-index: 20;
+    padding: 5px 10px;
+    background-color: #1e1e1e;
+    border-top: 1px solid #333;
 }
 
 #controls {
-    position: relative;
     display: grid;
+    width: min(90px);
     grid-template-columns: repeat(3, 1fr);
     grid-template-rows: repeat(3, 1fr);
-    gap: 5px;
-    width: min(150px, 45vw);
-    height: min(150px, 45vw);
-    margin-bottom: 5px;
+    gap: 3px;
+    aspect-ratio: 1 / 1;
+    
 }
 
-/* Control buttons positioning */
+.control-btn {
+    aspect-ratio: 1 / 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: rgba(0, 255, 0, 0.1);
+    border: 1px solid rgba(0, 255, 0, 0.3);
+    color: #00ff00;
+}
+
+.control-btn i {
+    font-size: clamp(10px, 3vw, 20px);
+}
+
 #upBtn { grid-area: 1 / 2 / 2 / 3; }
 #leftBtn { grid-area: 2 / 1 / 3 / 2; }
 #rightBtn { grid-area: 2 / 3 / 3 / 4; }
 #downBtn { grid-area: 2 / 2 / 2 / 3; }
 
-/* Control button styling */
-.control-btn {
-    width: 100%;
-    height: 100%;
-    padding: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background-color: rgba(0, 255, 0, 0.1);
-    border: 1px solid rgba(0, 255, 0, 0.3);
-    border-radius: 8px;
-    color: #00ff00;
-}
-
-.control-btn i {
-    font-size: clamp(14px, 4vw, 20px);
-}
-
 /* Game buttons container */
 .game-buttons {
-    width: 90%;
-    max-width: 280px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin-top: 5px;
-    position: relative;
-    z-index: 30;
-}
-
-/* Standard sized screens - vertical buttons */
-@media screen and (min-height: 600px) {
-    .game-buttons {
-        flex-direction: column;
-    }
-}
-
-/* Medium and small screens - horizontal buttons */
-@media screen and (max-height: 600px) {
-    .game-buttons {
-        flex-direction: row;
-        justify-content: space-between;
-        max-width: 90%;
-        gap: 5px;
-    }
-    
-    .game-btn {
-        min-height: 30px;
-        font-size: 0.5rem;
-    }
-}
-
-/* Daha küçük mobil cihazlar için ek optimizasyon */
-@media screen and (max-height: 500px) {
-    .controls-section {
-        flex-direction: row;
-        justify-content: space-around;
-        align-items: center;
-        min-height: 110px;
-        padding: 5px 10px;
-    }
-    
-    #controls {
-        margin: 0;
-        width: min(90px, 30vw);
-        height: min(90px, 30vw);
-    }
-    
-    .game-buttons {
-        width: 55%;
-        margin: 0;
-        flex-direction: row;
-        justify-content: space-between;
-        align-items: center;
-        gap: 5px;
-    }
-    
-    .game-btn {
-        min-height: 30px;
-        padding: 4px 2px;
-        font-size: 0.45rem;
-        gap: 3px;
-    }
-    
-    .gameplay-section {
-        margin: 2px 0;
-    }
-}
-
-/* Very small screens - optimize text and spacing */
-@media screen and (max-height: 400px) {
-    .game-buttons {
-        width: 60%;
-    }
-    
-    .game-btn {
-        min-height: 24px;
-        padding: 2px;
-        font-size: 0.4rem;
-    }
-    
-    .game-btn i {
-        font-size: 0.5rem;
-        margin-right: 1px;
-    }
-    
-    #controls {
-        width: min(80px, 25vw);
-        height: min(80px, 25vw);
-    }
-    
-    .controls-section {
-        min-height: 90px;
-    }
-}
-
-/* Landscape mode optimization */
-@media screen and (max-height: 450px) and (orientation: landscape) {
-    .controls-section {
-        flex-direction: row;
-    }
-    
-    .game-buttons {
-        flex-direction: row;
-        width: 65%;
-        max-width: none;
-    }
-    
-    .game-btn {
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
+    display: flex; /* Yatay sıralama için */
+    flex-direction: row;
+    justify-content: center;
+    gap: 10px;
+    height: 100%;
 }
 
 /* Game button styling */
 .game-btn {
     font-family: 'Press Start 2P', cursive;
-    font-size: 0.6rem;
-    padding: 10px 7px;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    text-transform: uppercase;
-    border: 1px solid;
-    width: 100%;
-    text-align: center;
+    font-size: 0.5rem;
+    padding: 2px;
     display: flex;
-    align-items: center;
     justify-content: center;
-    gap: 5px;
-    min-height: 36px;
-    position: relative;
-    overflow: visible;
-    -webkit-tap-highlight-color: rgba(0, 255, 0, 0.2);
-    touch-action: manipulation;
+    align-items: center;
+    gap: 3px;
+    background-color: rgba(0, 255, 0, 0.1);
+    color: #00ff00;
+    border: 1px solid rgba(0, 255, 0, 0.3);
+    border-radius: 4px;
+    min-height: 30px;
+    flex: 1; /* Eşit boyut */
 }
 
-.game-btn::before {
-    content: "";
+/* Modal styles */
+.modal, #leaderboard {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(5px);
+    z-index: 1000;
+    display: none;
+}
+
+.modal-content, .leaderboard-content {
     position: absolute;
-    top: -5px;
-    left: -5px;
-    right: -5px;
-    bottom: -5px;
-    z-index: -1;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: rgba(45, 45, 45, 0.95);
+    padding: 1.5rem;
+    border-radius: 15px;
+    box-shadow: 0 0 20px rgba(0, 255, 0, 0.2);
+    border: 1px solid rgba(0, 255, 0, 0.3);
+    text-align: center;
+    width: 90%;
+    max-width: 350px;
 }
 
-.game-btn i {
-    font-size: 0.7rem;
+
+@media screen and (max-height: 500px) {
+    
+    .controls-section {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    #controls {
+        max-height: 80px;
+        margin: 0;
+        
+    }
+    
+    .game-buttons {
+        margin: 0;
+        gap: 5px;
+    }
+    
+    .game-btn {
+        min-height: 25px;
+        padding: 5px;
+    }
+    
+    .gameplay-section {
+        margin: 2px 0;
+    }
+    
+    .score {
+        height: 20px;
+    }
+    
+    .score-text {
+        font-size: 0.6rem;
+    }
+    
+    .level-text {
+        font-size: 0.5rem;
+    }
+    
+   
 }
+
+
+
 
 /* Button colors */
 #playAgain {
@@ -312,34 +232,6 @@ body {
 }
 
 /* Leaderboard Styles */
-#leaderboard {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.85);
-    backdrop-filter: blur(5px);
-    z-index: 1000;
-}
-
-.leaderboard-content {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background-color: rgba(45, 45, 45, 0.95);
-    padding: 2rem;
-    border-radius: 15px;
-    box-shadow: 0 0 20px rgba(0, 255, 0, 0.2);
-    border: 1px solid rgba(0, 255, 0, 0.3);
-    min-width: 300px;
-    max-width: 90%;
-    max-height: 90vh;
-    overflow-y: auto;
-}
-
 .leaderboard-content h2 {
     font-family: 'Press Start 2P', cursive;
     color: #00ff00;
@@ -403,33 +295,6 @@ body {
 }
 
 /* Game Over Modal */
-.modal {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.85);
-    backdrop-filter: blur(5px);
-    z-index: 1000;
-}
-
-.modal-content {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background-color: rgba(45, 45, 45, 0.95);
-    padding: 1.5rem;
-    border-radius: 15px;
-    box-shadow: 0 0 20px rgba(0, 255, 0, 0.2);
-    border: 1px solid rgba(0, 255, 0, 0.3);
-    text-align: center;
-    width: 90%;
-    max-width: 350px;
-}
-
 .modal-content h2 {
     font-family: 'Press Start 2P', cursive;
     color: #00ff00;
@@ -466,138 +331,5 @@ body {
 }
 
 /* Media query for different screen sizes */
-@media screen and (max-height: 700px) {
-    .gameplay-section {
-        flex: 0.7;
-        min-height: 160px;
-    }
-    
-    #controls {
-        width: min(120px, 40vw);
-        height: min(120px, 40vw);
-        gap: 4px;
-    }
-    
-    .controls-section {
-        min-height: 150px;
-        padding-bottom: 5px;
-    }
-    
-    .game-btn {
-        padding: 5px;
-        font-size: 0.5rem;
-        height: 25px;
-    }
-    
-    .game-buttons {
-        gap: 3px;
-    }
-    
-    .control-btn i {
-        font-size: clamp(12px, 3vw, 18px);
-    }
-}
 
-@media screen and (max-height: 600px) {
-    #gameCanvas {
-        width: min(75vmin, 280px);
-        height: min(75vmin, 280px);
-    }
-    
-    .gameplay-section {
-        flex: 0.6;
-        min-height: 140px;
-        margin: 5px 0;
-    }
-    
-    .controls-section {
-        min-height: 130px;
-    }
-    
-    #controls {
-        width: min(100px, 35vw);
-        height: min(100px, 35vw);
-    }
-    
-    .game-buttons {
-        max-width: 250px;
-        margin-top: 3px;
-    }
-    
-    .game-btn {
-        height: 22px;
-        font-size: 0.45rem;
-    }
-    
-    .score-text {
-        font-size: 0.7rem;
-    }
-    
-    .level-text {
-        font-size: 0.5rem;
-    }
-}
 
-/* Daha küçük mobil cihazlar için ek optimizasyon */
-@media screen and (max-height: 500px) {
-    .controls-section {
-        flex-direction: row;
-        justify-content: space-around;
-        align-items: center;
-        min-height: 110px;
-        padding: 5px 10px;
-    }
-    
-    #controls {
-        margin: 0;
-        width: min(90px, 30vw);
-        height: min(90px, 30vw);
-    }
-    
-    .game-buttons {
-        width: 55%;
-        margin: 0;
-        gap: 10px;
-    }
-    
-    .game-btn {
-        min-height: 30px;
-        padding: 5px;
-    }
-    
-    .gameplay-section {
-        margin: 2px 0;
-    }
-}
-
-/* Smaller screens adjustments */
-@media screen and (max-width: 400px) {
-    .score {
-        gap: 10px;
-        height: 25px;
-    }
-    
-    .score-text {
-        font-size: 0.7rem;
-    }
-    
-    .level-text {
-        font-size: 0.6rem;
-    }
-}
-
-/* Very small screens */
-@media screen and (max-width: 320px) {
-    .score {
-        gap: 8px;
-        height: 22px;
-    }
-    
-    .score-text {
-        font-size: 0.6rem;
-    }
-    
-    .level-text {
-        font-size: 0.5rem;
-    }
-} 
