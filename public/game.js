@@ -90,13 +90,17 @@ function resizeCanvas() {
 }
 
 function randomFood() {
+    // Add some margin to prevent food from appearing at edges
+    const margin = 1;
+    
     let newFood;
     do {
         newFood = {
-            x: Math.floor(Math.random() * tileCount),
-            y: Math.floor(Math.random() * tileCount)
+            x: Math.floor(Math.random() * (tileCount - 2*margin)) + margin,
+            y: Math.floor(Math.random() * (tileCount - 2*margin)) + margin
         };
     } while (snake.some(segment => segment.x === newFood.x && segment.y === newFood.y));
+    
     food = newFood;
 }
 
@@ -159,9 +163,14 @@ function update() {
 }
 
 function draw() {
+    // Clear canvas
     ctx.fillStyle = '#2d2d2d';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+    // Draw gridlines (optional, helps with visibility)
+    ctx.strokeStyle = '#333333';
+    ctx.lineWidth = 0.5;
+    
     // Draw snake
     ctx.fillStyle = '#00ff00';
     ctx.shadowColor = '#00ff00';
@@ -170,11 +179,18 @@ function draw() {
         ctx.fillRect(segment.x * gridSize, segment.y * gridSize, gridSize - 2, gridSize - 2);
     });
 
-    // Draw food
+    // Draw food with enhanced visibility
     ctx.fillStyle = '#ff0000';
     ctx.shadowColor = '#ff0000';
-    ctx.fillRect(food.x * gridSize, food.y * gridSize, gridSize - 2, gridSize - 2);
+    ctx.shadowBlur = 15;
+    ctx.beginPath();
+    const centerX = food.x * gridSize + gridSize/2;
+    const centerY = food.y * gridSize + gridSize/2;
+    const radius = gridSize/2 - 2;
+    ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+    ctx.fill();
     
+    // Reset shadow
     ctx.shadowBlur = 0;
 }
 
@@ -286,11 +302,11 @@ async function updateLeaderboard() {
 
         leaderboardList.innerHTML = topScores.map((score, index) => `
             <div class="leaderboard-item">
-                <span class="leaderboard-rank">#${index + 1}</span>
-                <span class="leaderboard-name">${score.nickname}</span>
+                <span class="leaderboard-rank">#${index + 1} </span>
+                <span class="leaderboard-name">${score.nickname} </span>
                 <div class="score-info">
-                    <span class="score-value">${score.score}</span>
-                    <span class="score-stage">Stage ${score.stage}</span>
+                    <span class="score-value">${score.score} </span>
+                    <span class="score-stage">Stage ${score.stage} </span>
                 </div>
             </div>
         `).join('');
@@ -649,10 +665,8 @@ function isValidNextMove(newMove) {
 // Update the score display function
 function updateScoreDisplay() {
     const level = Math.floor(foodCount / 10) + 1;
-    scoreElement.innerHTML = `
-        <span class="score-text">Score: ${score}</span><br>
-        <span class="level-text">Level ${level}</span>
-    `;
+    document.getElementById('score').textContent = score;
+    document.getElementById('level').textContent = level;
 }
 
 // Add store UI
