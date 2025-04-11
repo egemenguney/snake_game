@@ -35,24 +35,27 @@ body {
 /* Score section at top */
 .score-section {
     width: 100%;
-    padding: 10px 0;
+    padding: 5px 0;
     z-index: 20;
     background-color: rgba(30, 30, 30, 0.9);
 }
 
 .score {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
+    justify-content: center;
     align-items: center;
-    gap: 5px;
+    gap: 15px;
     text-align: center;
     width: 100%;
+    padding: 5px;
+    height: 30px;
 }
 
 .score-text {
     color: #00ff00;
     font-family: 'Press Start 2P', cursive;
-    font-size: 0.9rem;
+    font-size: 0.8rem;
     text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
 }
 
@@ -564,5 +567,37 @@ body {
     
     .gameplay-section {
         margin: 2px 0;
+    }
+}
+
+/* Smaller screens adjustments */
+@media screen and (max-width: 400px) {
+    .score {
+        gap: 10px;
+        height: 25px;
+    }
+    
+    .score-text {
+        font-size: 0.7rem;
+    }
+    
+    .level-text {
+        font-size: 0.6rem;
+    }
+}
+
+/* Very small screens */
+@media screen and (max-width: 320px) {
+    .score {
+        gap: 8px;
+        height: 22px;
+    }
+    
+    .score-text {
+        font-size: 0.6rem;
+    }
+    
+    .level-text {
+        font-size: 0.5rem;
     }
 } 
