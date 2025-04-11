@@ -118,7 +118,7 @@ html, body {
     flex-direction: row;
     justify-content: center;
     gap: 5px;
-    padding-bottom: 25px;
+    padding-bottom: 50px;
 }
 
 /* Game button styling */
