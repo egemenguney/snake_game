@@ -3,7 +3,9 @@ const sqlite3 = require('sqlite3').verbose();
 const cors = require('cors');
 const path = require('path');
 const app = express();
-const port = 3000;
+
+// Use Heroku's provided port or default to 3000
+const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors());
@@ -11,11 +13,11 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Create SQLite database connection
-const db = new sqlite3.Database('snake_game.db', (err) => {
+const db = new sqlite3.Database(':memory:', (err) => {
     if (err) {
         console.error('Error opening database:', err);
     } else {
-        console.log('Connected to SQLite database');
+        console.log('Connected to in-memory SQLite database');
         // Create scores table if it doesn't exist
         db.run(`
             CREATE TABLE IF NOT EXISTS scores (
@@ -80,8 +82,8 @@ app.post('/api/scores', (req, res) => {
     );
 });
 
-// Root route
-app.get('/', (req, res) => {
+// Serve index.html for all routes (SPA support)
+app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
@@ -91,19 +93,15 @@ app.use((err, req, res, next) => {
     res.status(500).json({ error: 'Something went wrong!' });
 });
 
-// Close database connection when server stops
-process.on('SIGINT', () => {
-    db.close((err) => {
-        if (err) {
-            console.error('Error closing database:', err);
-        } else {
-            console.log('Database connection closed');
-        }
-        process.exit(0);
-    });
+// Start server
+app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
 });
 
-// Start server
-app.listen(port, () => {
-    console.log(`Server running at http://localhost:${port}`);
+// Handle process termination
+process.on('SIGTERM', () => {
+    db.close(() => {
+        console.log('Database connection closed');
+        process.exit(0);
+    });
 }); 
