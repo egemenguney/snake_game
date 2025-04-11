@@ -358,7 +358,7 @@ function handleScoreSubmission() {
 function startDemo() {
     resetGame();
     isDemo = true;
-    demoButton.innerHTML = '<i class="fas fa-stop"></i> Demo Durdur';
+    demoButton.innerHTML = '<i class="fas fa-stop"></i> Stop Demo';
     demoButton.classList.add('active');
     
     // Start from a strategic position
