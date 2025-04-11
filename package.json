@@ -1,0 +1,24 @@
+{
+  "name": "snake-game",
+  "version": "1.0.0",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "build": "npm install"
+  },
+  "engines": {
+    "node": "16.x"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.17.1",
+    "sqlite3": "^5.1.6",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.15"
+  },
+  "description": ""
+}

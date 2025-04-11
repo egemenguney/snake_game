@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snake Game</title>
+    <!-- Add Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="game-container">
+        <div class="score"><span id="score"></span></div>
+        
+        
+        <canvas id="gameCanvas" width="400" height="400"></canvas>
+        
+        <!-- Updated Controls with Font Awesome icons -->
+        <div id="controls">
+            <button id="upBtn" class="control-btn">
+                <i class="fas fa-chevron-up"></i>
+            </button>
+            <button id="leftBtn" class="control-btn">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+            <button id="downBtn" class="control-btn">
+                <i class="fas fa-chevron-down"></i>
+            </button>
+            <button id="rightBtn" class="control-btn">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+        </div>
+
+        <div class="game-buttons">
+            <button id="playAgain" class="game-btn">
+                <i class="fas fa-redo"></i> Play Again
+            </button>
+            <button id="demoButton" class="game-btn">
+                <i class="fas fa-play"></i> Watch Demo
+            </button>
+            <button id="showLeaderboard" class="game-btn">
+                <i class="fas fa-trophy"></i> Show Leaderboard
+            </button>
+        </div>
+    </div>
+
+    <!-- Leaderboard Modal -->
+    <div id="leaderboard">
+        <div class="leaderboard-content">
+            <h2>Leaderboard</h2>
+            <button id="closeLeaderboard">×</button>
+            <div id="leaderboardList"></div>
+        </div>
+    </div>
+
+    <!-- Game Over Modal -->
+    <div id="nicknameModal" class="modal">
+        <div class="modal-content">
+            <h2>Game Over</h2>
+            <p id="finalScore"></p>
+            <input type="text" id="nickname" placeholder="Enter your nickname">
+            <button id="submitScore">Submit Score</button>
+        </div>
+    </div>
+
+    <!-- Add ad container -->
+    <div id="ad-container" class="ad-space"></div>
+
+    <!-- Add Google AdSense -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbuild.js"></script>
+
+    <script src="game.js"></script>
+</body>
+</html> 
