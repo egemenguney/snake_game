@@ -117,8 +117,8 @@ html, body {
     display: flex; /* Yatay sıralama için */
     flex-direction: row;
     justify-content: center;
-    gap: 10px;
-    height: 100%;
+    gap: 5px;
+    padding-bottom: 25px;
 }
 
 /* Game button styling */
