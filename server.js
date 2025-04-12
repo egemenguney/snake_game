@@ -3,10 +3,18 @@ const cors = require('cors');
 const path = require('path');
 const app = express();
 
-// Import database based on environment
+// Port configuration
+const PORT = process.env.PORT || 3000;
+
+// Middleware
+app.use(cors());
+app.use(express.json());
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Database configuration
 let db;
 if (process.env.DATABASE_URL) {
-    // Postgres setup for production
+    // PostgreSQL for production (Heroku)
     const { Pool } = require('pg');
     const pool = new Pool({
         connectionString: process.env.DATABASE_URL,
@@ -15,7 +23,7 @@ if (process.env.DATABASE_URL) {
         }
     });
     
-    // Create scores table
+    // Initialize database
     pool.query(`
         CREATE TABLE IF NOT EXISTS scores (
             id SERIAL PRIMARY KEY,
@@ -27,63 +35,45 @@ if (process.env.DATABASE_URL) {
     `).catch(err => console.error('Error creating table:', err));
     
     db = {
-        all: (query, params, callback) => {
-            pool.query(query.replace('?', '$1'), params)
-                .then(res => callback(null, res.rows))
-                .catch(err => callback(err));
+        all: async (query, params) => {
+            const result = await pool.query(
+                query.replace(/\?/g, (_, i) => `$${i + 1}`),
+                params
+            );
+            return result.rows;
         },
-        run: (query, params, callback) => {
-            pool.query(query.replace(/\?/g, (_, i) => `$${i+1}`), params)
-                .then(res => callback.call({lastID: res.rows[0]?.id}))
-                .catch(err => callback(err));
+        run: async (query, params) => {
+            const result = await pool.query(
+                query.replace(/\?/g, (_, i) => `$${i + 1}`),
+                params
+            );
+            return result;
         }
     };
 } else {
-    // SQLite for development
-    const sqlite3 = require('sqlite3').verbose();
-    db = new sqlite3.Database(':memory:', (err) => {
-        if (err) {
-            console.error('Error opening database:', err);
-        } else {
-            console.log('Connected to in-memory SQLite database');
-            db.run(`
-                CREATE TABLE IF NOT EXISTS scores (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    nickname TEXT NOT NULL,
-                    score INTEGER NOT NULL,
-                    stage INTEGER NOT NULL,
-                    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-                )
-            `);
-        }
-    });
+    console.log('No DATABASE_URL found, running without database');
+    // Mock DB for development
+    db = {
+        all: async () => [],
+        run: async () => ({})
+    };
 }
 
-// Port configuration - important for Heroku
-const PORT = process.env.PORT || 3000;
-
-// Middleware
-app.use(cors());
-app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
-
 // API Routes
-app.get('/api/scores', (req, res) => {
-    db.all(
-        'SELECT * FROM scores ORDER BY score DESC LIMIT 10',
-        [],
-        (err, rows) => {
-            if (err) {
-                console.error('Error fetching scores:', err);
-                res.status(500).json({ error: 'Failed to fetch scores' });
-                return;
-            }
-            res.json(rows || []);
-        }
-    );
+app.get('/api/scores', async (req, res) => {
+    try {
+        const rows = await db.all(
+            'SELECT * FROM scores ORDER BY score DESC LIMIT 10',
+            []
+        );
+        res.json(rows || []);
+    } catch (err) {
+        console.error('Error fetching scores:', err);
+        res.status(500).json({ error: 'Failed to fetch scores' });
+    }
 });
 
-app.post('/api/scores', (req, res) => {
+app.post('/api/scores', async (req, res) => {
     const { nickname, score, stage } = req.body;
 
     // Validate input
@@ -99,23 +89,20 @@ app.post('/api/scores', (req, res) => {
         return res.status(400).json({ error: 'Invalid stage' });
     }
 
-    db.run(
-        'INSERT INTO scores (nickname, score, stage) VALUES (?, ?, ?)',
-        [nickname.trim(), score, stage],
-        function(err) {
-            if (err) {
-                console.error('Error saving score:', err);
-                res.status(500).json({ error: 'Failed to save score' });
-                return;
-            }
-            res.status(201).json({
-                id: this.lastID,
-                nickname,
-                score,
-                stage
-            });
-        }
-    );
+    try {
+        await db.run(
+            'INSERT INTO scores (nickname, score, stage) VALUES (?, ?, ?)',
+            [nickname.trim(), score, stage]
+        );
+        res.status(201).json({
+            nickname,
+            score,
+            stage
+        });
+    } catch (err) {
+        console.error('Error saving score:', err);
+        res.status(500).json({ error: 'Failed to save score' });
+    }
 });
 
 // Serve index.html for all routes (SPA support)
@@ -123,28 +110,7 @@ app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-    console.error('Server error:', err.stack);
-    res.status(500).json({ error: 'Something went wrong!' });
-});
-
-// Start server - CRITICAL FOR HEROKU
-app.listen(PORT, () => {
+// Start server
+app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT}`);
-});
-
-// Handle process termination
-process.on('SIGTERM', () => {
-    db.close(() => {
-        console.log('Database connection closed');
-        process.exit(0);
-    });
-});
-
-process.on('SIGINT', () => {
-    db.close(() => {
-        console.log('Database connection closed');
-        process.exit(0);
-    });
 }); 
