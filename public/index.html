@@ -102,6 +102,42 @@
         </div>
         <button id="closeGuide">Close</button>
     </div>
+    
+    <!-- Settings Menu Modal -->
+    <div class="settings-modal" id="settingsMenu">
+        <div class="settings-content">
+            <h3>Game Settings</h3>
+            
+            <div class="settings-section">
+                <h4>Sound</h4>
+                <div class="settings-option">
+                    <input type="checkbox" id="soundToggle" checked>
+                    <label for="soundToggle">Game Sounds</label>
+                </div>
+            </div>
+            
+            <div class="settings-section">
+                <h4>Difficulty</h4>
+                <div class="settings-option">
+                    <input type="radio" id="difficultyEasy" name="difficulty" value="easy">
+                    <label for="difficultyEasy">Easy</label>
+                </div>
+                <div class="settings-option">
+                    <input type="radio" id="difficultyNormal" name="difficulty" value="normal" checked>
+                    <label for="difficultyNormal">Normal</label>
+                </div>
+                <div class="settings-option">
+                    <input type="radio" id="difficultyHard" name="difficulty" value="hard">
+                    <label for="difficultyHard">Hard (Start at Level 10)</label>
+                </div>
+            </div>
+            
+            <div class="settings-buttons">
+                <button id="saveSettings" class="settings-btn">Save</button>
+                <button id="closeSettings" class="settings-btn">Cancel</button>
+            </div>
+        </div>
+    </div>
 
     <script src="game.js"></script>
 </body>

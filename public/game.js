@@ -26,6 +26,13 @@ const GRID_DIRECTIONS = [
     { dx: -1, dy: 0 }  // left
 ];
 
+// Add settings object after existing variables
+// Game settings
+const settings = {
+    difficulty: 'normal', // 'easy', 'normal', 'hard'
+    sound: true
+};
+
 // Oyun durumu
 let snake = [{ x: 10, y: 10 }];
 let food = { x: 5, y: 5 };
@@ -43,6 +50,7 @@ let isGameOver = false;
 let assetsLoaded = false;
 let bombs = [];
 let bombTimers = [];
+let showSettings = false;
 
 // Game assets
 const assets = {
@@ -62,12 +70,9 @@ const sounds = {
     gameOver: new Audio('assets/sounds/gameover.mp3')
 };
 
-// Mute state
-let isMuted = false;
-
 // Function to play a sound if not muted
 function playSound(soundName) {
-    if (!isMuted && sounds[soundName]) {
+    if (settings.sound && sounds[soundName]) {
         // Stop and reset the sound before playing (for rapid triggers)
         sounds[soundName].pause();
         sounds[soundName].currentTime = 0;
@@ -282,9 +287,26 @@ function draw() {
 function startGame() {
     if (gameStarted) return;
     
-    console.log("Starting game");
+    console.log("Starting game with difficulty:", settings.difficulty);
     gameStarted = true;
     isGameOver = false;
+    
+    // Apply difficulty settings
+    if (settings.difficulty === 'hard') {
+        // Hard mode starts at level 10
+        foodCount = 90; // Level 10 starts after eating 90 food items (9 complete levels)
+        score = 900;    // 90 food items * 10 points each
+        speed = baseSpeed + 5; // Increased speed for hard mode
+    } else if (settings.difficulty === 'easy') {
+        // Easy mode has slower speed
+        speed = baseSpeed - 2;
+    } else {
+        // Normal mode uses default speed
+        speed = baseSpeed;
+    }
+    
+    // Update score display
+    updateScoreDisplay();
     
     if (gameLoop) {
         clearInterval(gameLoop);
@@ -445,7 +467,7 @@ function addToMoveQueue(direction) {
     }
 }
 
-// Modify update function to use the move queue
+// Update the update function to handle difficulty
 function update() {
     if (!gameStarted || isGameOver) return;
     
@@ -464,13 +486,31 @@ function update() {
         // Play food sound
         playSound('food');
         
-        // Add score
-        score += 10;
+        // Calculate score based on difficulty
+        let basePoints = 10;
+        let multiplier = 1;
+        
+        if (settings.difficulty === 'hard') {
+            multiplier = 1.5; // 50% more points in hard mode
+        } else if (settings.difficulty === 'easy') {
+            multiplier = 0.8; // 20% fewer points in easy mode
+        }
+        
+        // Add score with difficulty multiplier
+        score += Math.floor(basePoints * multiplier);
         foodCount++;
         
         // Increase speed every 5 food items
         if (foodCount % 5 === 0) {
-            speed += 1;
+            // Adjust speed based on difficulty
+            if (settings.difficulty === 'hard') {
+                speed += 1.5; // Faster speed increase in hard mode
+            } else if (settings.difficulty === 'easy') {
+                speed += 0.5; // Slower speed increase in easy mode
+            } else {
+                speed += 1; // Normal speed increase
+            }
+            
             clearInterval(gameLoop);
             gameLoop = setInterval(update, 1000 / speed);
         }
@@ -526,16 +566,32 @@ function gameOver() {
 
 // Oyunu sıfırla
 function resetGame() {
-    console.log("Game reset");
+    console.log("Game reset with difficulty:", settings.difficulty);
     clearTimeout(demoTimeout);
     clearInterval(gameLoop);
     gameLoop = null;
     snake = [{ x: 10, y: 10 }];
     dx = 0;
     dy = 0;
-    score = 0;
-    foodCount = 0;
-    speed = baseSpeed;
+    
+    // Apply difficulty settings
+    if (settings.difficulty === 'hard') {
+        // Hard mode starts at level 10
+        foodCount = 90; // Level 10 starts after eating 90 food items
+        score = 900;    // 90 food items * 10 points each
+        speed = baseSpeed + 5; // Increased speed for hard mode
+    } else if (settings.difficulty === 'easy') {
+        // Easy mode
+        foodCount = 0;
+        score = 0;
+        speed = baseSpeed - 2;
+    } else {
+        // Normal mode
+        foodCount = 0;
+        score = 0;
+        speed = baseSpeed;
+    }
+    
     gameStarted = false;
     isGameOver = false;
     foodType = 'apple';
@@ -1210,14 +1266,24 @@ function setupEventListeners() {
     const muteBtn = document.createElement('button');
     muteBtn.id = 'muteBtn';
     muteBtn.className = 'game-btn';
-    muteBtn.innerHTML = '<i class="fas fa-volume-up"></i> Sound';
+    muteBtn.innerHTML = settings.sound ? 
+        '<i class="fas fa-volume-up"></i> Sound' : 
+        '<i class="fas fa-volume-mute"></i> Muted';
+    if (!settings.sound) muteBtn.classList.add('muted');
     document.querySelector('.game-buttons').appendChild(muteBtn);
+    
+    // Add settings button to controls section
+    const settingsBtn = document.createElement('button');
+    settingsBtn.id = 'settingsBtn';
+    settingsBtn.className = 'game-btn';
+    settingsBtn.innerHTML = '<i class="fas fa-cog"></i> Settings';
+    document.querySelector('.game-buttons').appendChild(settingsBtn);
     
     // Mute button functionality
     muteBtn.addEventListener('click', () => {
-        isMuted = !isMuted;
+        settings.sound = !settings.sound;
         
-        if (isMuted) {
+        if (!settings.sound) {
             muteBtn.innerHTML = '<i class="fas fa-volume-mute"></i> Muted';
             muteBtn.classList.add('muted');
         } else {
@@ -1234,6 +1300,75 @@ function setupEventListeners() {
     // Close guide button
     closeGuide.addEventListener('click', () => {
         foodGuide.style.display = 'none';
+    });
+    
+    // Settings menu
+    const settingsMenu = document.getElementById('settingsMenu');
+    const soundToggle = document.getElementById('soundToggle');
+    const difficultyEasy = document.getElementById('difficultyEasy');
+    const difficultyNormal = document.getElementById('difficultyNormal');
+    const difficultyHard = document.getElementById('difficultyHard');
+    const saveSettingsBtn = document.getElementById('saveSettings');
+    const closeSettingsBtn = document.getElementById('closeSettings');
+    
+    // Initialize settings values
+    soundToggle.checked = settings.sound;
+    switch (settings.difficulty) {
+        case 'easy':
+            difficultyEasy.checked = true;
+            break;
+        case 'normal':
+            difficultyNormal.checked = true;
+            break;
+        case 'hard':
+            difficultyHard.checked = true;
+            break;
+    }
+    
+    // Open settings menu
+    settingsBtn.addEventListener('click', () => {
+        settingsMenu.style.display = 'block';
+    });
+    
+    // Save settings
+    saveSettingsBtn.addEventListener('click', () => {
+        // Save sound setting
+        settings.sound = soundToggle.checked;
+        
+        // Save difficulty setting
+        if (difficultyEasy.checked) {
+            settings.difficulty = 'easy';
+        } else if (difficultyNormal.checked) {
+            settings.difficulty = 'normal';
+        } else if (difficultyHard.checked) {
+            settings.difficulty = 'hard';
+        }
+        
+        // Update UI based on new settings
+        muteBtn.innerHTML = settings.sound ? 
+            '<i class="fas fa-volume-up"></i> Sound' : 
+            '<i class="fas fa-volume-mute"></i> Muted';
+        
+        if (!settings.sound) {
+            muteBtn.classList.add('muted');
+        } else {
+            muteBtn.classList.remove('muted');
+        }
+        
+        // Close settings menu
+        settingsMenu.style.display = 'none';
+    });
+    
+    // Close settings menu
+    closeSettingsBtn.addEventListener('click', () => {
+        settingsMenu.style.display = 'none';
+    });
+    
+    // Close settings when clicking outside
+    window.addEventListener('click', (e) => {
+        if (e.target === settingsMenu) {
+            settingsMenu.style.display = 'none';
+        }
     });
 
     // Create direction arrows for all devices
