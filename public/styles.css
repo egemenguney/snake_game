@@ -38,6 +38,9 @@ body {
     padding: 5px 0;
     z-index: 20;
     background-color: rgba(30, 30, 30, 0.9);
+    min-height: 40px;
+    max-height: 60px;
+    flex-shrink: 0;
 }
 
 .score {
@@ -78,15 +81,21 @@ body {
     overflow: visible;
     position: relative;
     min-height: 200px;
+    aspect-ratio: 1 / 1;
+    max-width: min(90vw, 90vh);
+    max-height: min(90vw, 90vh);
+    margin: 0 auto;
 }
 
 #gameCanvas {
-    width: min(90vmin, 350px);
-    height: min(90vmin, 350px);
+    aspect-ratio: 1 / 1;
+    width: 100%;
+    height: 100%;
     border: 2px solid #333;
     border-radius: 5px;
     display: block;
     background-color: #2d2d2d;
+    object-fit: contain;
 }
 
 /* Controls section at bottom */
@@ -94,7 +103,9 @@ body {
     width: 100%;
     padding-bottom: 10px;
     margin-top: 5px;
-    min-height: 170px;
+    min-height: 140px;
+    max-height: 180px;
+    flex-shrink: 0;
     position: relative;
     display: flex;
     flex-direction: column;
@@ -541,10 +552,14 @@ body {
         flex: 0.6;
         min-height: 140px;
         margin: 5px 0;
+        aspect-ratio: 1 / 1;
+        max-width: min(70vw, 70vh);
+        max-height: min(70vw, 70vh);
     }
     
     .controls-section {
-        min-height: 130px;
+        min-height: 120px;
+        max-height: 150px;
     }
     
     #controls {
@@ -958,5 +973,121 @@ body {
 @media screen and (min-width: 769px) {
     .direction-arrows {
         display: block;
+    }
+}
+
+/* Pencere boyutuna göre kontrol butonları ve kenar okları görünürlüğü */
+
+/* Büyük ekranlar: Kenar okları görünmez, kontrol butonları görünür */
+@media screen and (min-width: 769px) and (min-height: 769px) {
+    .direction-arrows {
+        display: none !important;
+    }
+    
+    #controls {
+        display: grid !important;
+    }
+}
+
+/* Küçük ekranlar: Kenar okları görünür, kontrol butonları görünmez */
+@media screen and (max-width: 768px), (max-height: 768px) {
+    .direction-arrows {
+        display: block !important;
+    }
+    
+    #controls {
+        display: none !important;
+    }
+}
+
+/* Çok büyük ekranlar: Kenar okları tamamen gizli */
+@media screen and (min-width: 1200px) and (min-height: 900px) {
+    .direction-arrows {
+        display: none !important;
+    }
+}
+
+/* Çok küçük ekranlar: Kontrol butonları tamamen gizli */
+@media screen and (max-width: 480px), (max-height: 600px) {
+    #controls {
+        display: none !important;
+    }
+    
+    .direction-arrows {
+        display: block !important;
+    }
+}
+
+/* Kenar okları gösterimi için hover efekti - büyük ekranlarda sadece hover durumunda görünür */
+@media screen and (min-width: 769px) {
+    .direction-arrows {
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+    
+    .gameplay-section:hover .direction-arrows {
+        opacity: 1;
+    }
+}
+
+/* Yatay mod için özel düzenleme */
+@media screen and (max-height: 500px) and (orientation: landscape) {
+    .game-container {
+        flex-direction: row;
+        align-items: center;
+        height: 100vh;
+    }
+    
+    .score-section {
+        width: 15%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+    
+    .gameplay-section {
+        flex: 0 0 auto;
+        aspect-ratio: 1 / 1;
+        max-width: min(80vh, 50vw);
+        max-height: min(80vh, 50vw);
+        margin: 0 10px;
+    }
+    
+    .controls-section {
+        width: 25%;
+        height: 100%;
+        margin-top: 0;
+        min-height: auto;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+    
+    .score {
+        flex-direction: column;
+        height: auto;
+    }
+    
+    .score-text, .level-text {
+        margin: 5px 0;
+    }
+}
+
+/* Responsive ayarlamalar */
+@media screen and (min-aspect-ratio: 2/1) {
+    .game-container {
+        flex-direction: row;
+    }
+    
+    .gameplay-section {
+        margin: 0 10px;
+    }
+}
+
+@media screen and (min-width: 1200px) {
+    .gameplay-section {
+        max-width: min(80vh, 600px);
+        max-height: min(80vh, 600px);
     }
 } 
