@@ -55,6 +55,28 @@ const assets = {
     oliebol: new Image()
 };
 
+// Add sound system at the top of the file after other initializations
+// Sound system - only food and game over sounds
+const sounds = {
+    food: new Audio('assets/sounds/food.mp3'),
+    gameOver: new Audio('assets/sounds/gameover.mp3')
+};
+
+// Mute state
+let isMuted = false;
+
+// Function to play a sound if not muted
+function playSound(soundName) {
+    if (!isMuted && sounds[soundName]) {
+        // Stop and reset the sound before playing (for rapid triggers)
+        sounds[soundName].pause();
+        sounds[soundName].currentTime = 0;
+        sounds[soundName].play().catch(error => {
+            console.warn(`Error playing sound ${soundName}:`, error);
+        });
+    }
+}
+
 // Initialize assets
 function initAssets() {
     // Set image sources
@@ -258,20 +280,17 @@ function draw() {
 
 // Oyunu başlat
 function startGame() {
-    console.log("startGame called");
-    if (!gameStarted) {
-        gameStarted = true;
-        
-        // Başlangıç yönü (sağa doğru)
-        dx = 1;
-        dy = 0;
-        
-        // Oyun döngüsünü başlat
-        if (gameLoop) clearInterval(gameLoop);
-        gameLoop = setInterval(update, 1000 / speed);
-        
-        console.log("Game started with direction:", dx, dy);
+    if (gameStarted) return;
+    
+    console.log("Starting game");
+    gameStarted = true;
+    isGameOver = false;
+    
+    if (gameLoop) {
+        clearInterval(gameLoop);
     }
+    
+    gameLoop = setInterval(update, 1000 / speed);
 }
 
 // Rastgele yiyecek oluştur
@@ -324,73 +343,81 @@ function checkCollision(head) {
 let moveQueue = [];
 const MAX_QUEUE_LENGTH = 2;
 
-// Modify handleKeyDown function to use moveQueue
+// Update handleKeyDown to prevent controls during demo mode
 function handleKeyDown(e) {
-    // Start game on arrow key press
-    if (!gameStarted && e.key.startsWith('Arrow')) {
-        startGame();
-    }
+    // No controls during demo mode
+    if (isDemo || isGameOver) return;
     
-    if (!gameStarted) return;
-
-    const currentDirection = { dx, dy };
-    let newDirection;
-
-    // Determine new direction based on key
-    switch(e.key) {
-        case 'ArrowUp':
-            newDirection = { dx: 0, dy: -1 };
-            break;
-        case 'ArrowDown':
-            newDirection = { dx: 0, dy: 1 };
-            break;
-        case 'ArrowLeft':
-            newDirection = { dx: -1, dy: 0 };
-            break;
-        case 'ArrowRight':
-            newDirection = { dx: 1, dy: 0 };
-            break;
-        default:
-            return; // Not an arrow key
-    }
-
-    // Only queue if it's a valid move (not directly opposite of current direction)
-    if (isValidDirectionChange(currentDirection, newDirection)) {
-        addToMoveQueue(newDirection);
-    }
-}
-
-// Modify handleButtonClick to use moveQueue as well
-function handleButtonClick(direction) {
-    // Start game on first button click
+    // If game not started, any key press will start it
     if (!gameStarted) {
         startGame();
     }
     
-    if (!gameStarted || isDemo) return;
-
-    const currentDirection = { dx, dy };
-    let newDirection;
-
-    // Determine new direction based on button
-    switch(direction) {
-        case 'up':
-            newDirection = { dx: 0, dy: -1 };
+    // Handle arrow keys
+    switch(e.key) {
+        case 'ArrowUp':
+            if (dy !== 1) { // Not moving down
+                dx = 0;
+                dy = -1;
+            }
             break;
-        case 'down':
-            newDirection = { dx: 0, dy: 1 };
+        case 'ArrowRight':
+            if (dx !== -1) { // Not moving left
+                dx = 1;
+                dy = 0;
+            }
             break;
-        case 'left':
-            newDirection = { dx: -1, dy: 0 };
+        case 'ArrowDown':
+            if (dy !== -1) { // Not moving up
+                dx = 0;
+                dy = 1;
+            }
             break;
-        case 'right':
-            newDirection = { dx: 1, dy: 0 };
+        case 'ArrowLeft':
+            if (dx !== 1) { // Not moving right
+                dx = -1;
+                dy = 0;
+            }
             break;
     }
+}
 
-    // Only queue if it's a valid move
-    if (isValidDirectionChange(currentDirection, newDirection)) {
-        addToMoveQueue(newDirection);
+// Update handleButtonClick to prevent controls during demo mode
+function handleButtonClick(direction) {
+    // No controls during demo mode
+    if (isDemo || isGameOver) return;
+    
+    // If game not started, any button press will start it
+    if (!gameStarted) {
+        startGame();
+    }
+    
+    // Set direction based on button clicked
+    switch(direction) {
+        case 'up':
+            if (dy !== 1) { // Not moving down
+                dx = 0;
+                dy = -1;
+            }
+            break;
+        case 'right':
+            if (dx !== -1) { // Not moving left
+                dx = 1;
+                dy = 0;
+            }
+            break;
+        case 'down':
+            if (dy !== -1) { // Not moving up
+                dx = 0;
+                dy = 1;
+            }
+            break;
+        case 'left':
+            if (dx !== 1) { // Not moving right
+                dx = -1;
+                dy = 0;
+            }
+            break;
     }
 }
 
@@ -420,110 +447,81 @@ function addToMoveQueue(direction) {
 
 // Modify update function to use the move queue
 function update() {
-    if (!gameStarted) return;
-
-    // Process next move from queue
-    if (moveQueue.length > 0) {
-        const nextMove = moveQueue.shift();
-        dx = nextMove.dx;
-        dy = nextMove.dy;
-    }
-
-    // Calculate new head position
-    const head = { 
-        x: snake[0].x + dx, 
-        y: snake[0].y + dy 
-    };
+    if (!gameStarted || isGameOver) return;
     
-    // Wall collision with wrapping
-    if (head.x < 0) head.x = tileCount - 1;
-    if (head.x >= tileCount) head.x = 0;
-    if (head.y < 0) head.y = tileCount - 1;
-    if (head.y >= tileCount) head.y = 0;
-
-    // Self collision check - make sure to check only after the head has moved
-    if (checkCollision(head)) {
-        isGameOver = true;
-        gameOver();
-        return;
-    }
-
-    // Add new head
-    snake.unshift(head);
-
-    // Food collision check
+    const head = { ...snake[0] };
+    
+    // Move head based on current direction
+    head.x += dx;
+    head.y += dy;
+    
+    // Wrap around if out of bounds
+    head.x = (head.x + tileCount) % tileCount;
+    head.y = (head.y + tileCount) % tileCount;
+    
+    // Check if snake eats food
     if (head.x === food.x && head.y === food.y) {
-        let pointsGained = 10;
-        let growthAmount = 1;
+        // Play food sound
+        playSound('food');
         
-        // Special food effects
-        switch(foodType) {
-            case 'easterEgg':
-                growthAmount = 2; // Double growth
-                pointsGained = 15;
-                break;
-            case 'oliebol':
-                pointsGained = 25; // Bonus points
-                break;
-        }
-        
-        // Apply effects
-        score += pointsGained;
+        // Add score
+        score += 10;
         foodCount++;
         
-        // Keep the tail (don't pop for growth amount times)
-        for (let i = 1; i < growthAmount; i++) {
-            const tail = snake[snake.length - 1];
-            snake.push({...tail}); // Add a copy of the tail
-        }
-        
-        // Level progression
-        if (Math.floor(foodCount / 10) > Math.floor(foodCount / 10)) {
-            speed = baseSpeed + Math.floor(foodCount / 10) * 2;
+        // Increase speed every 5 food items
+        if (foodCount % 5 === 0) {
+            speed += 1;
             clearInterval(gameLoop);
             gameLoop = setInterval(update, 1000 / speed);
         }
         
-        updateScoreDisplay();
+        // Add new food
         randomFood();
     } else {
-        // Remove tail if no food was eaten
+        // Remove tail if not eating
         snake.pop();
     }
-
+    
+    // Check for collisions
+    if (checkCollision(head)) {
+        gameOver();
+        return;
+    }
+    
+    // Add new head
+    snake.unshift(head);
+    
+    // Update score display
+    updateScoreDisplay();
+    
+    // Draw new state
     draw();
 }
 
-// Oyun bittiğinde
+// Update gameOver function to handle demo mode properly
 function gameOver() {
+    console.log("Game over");
+    isGameOver = true;
+    gameStarted = false;
+    
+    // Play game over sound
+    playSound('gameOver');
+    
+    if (gameLoop) {
+        clearInterval(gameLoop);
+        gameLoop = null;
+    }
+    
+    // Handle demo mode differently
     if (isDemo) {
+        console.log("Demo game over - returning to main menu");
         stopDemo();
         return;
     }
     
-    console.log("Game over!");
-    clearInterval(gameLoop);
-    gameLoop = null;
-    gameStarted = false;
-    
-    // Stop snake movement
-    dx = 0;
-    dy = 0;
-    
-    // Draw the final state with dead head
-    draw();
-    
-    // Show score and modal
-    const level = Math.floor(foodCount / 10) + 1;
-    finalScore.innerHTML = `
-        <span class="score-text">Score: ${score}</span>
-        <span class="level-text">Level: ${level}</span>
-    `;
-    
-    // Show modal
-    setTimeout(() => {
-        modal.style.display = 'block';
-    }, 500); // Small delay to let player see the dead snake
+    // For normal gameplay, show the score submission screen
+    finalScore.textContent = score;
+    modal.style.display = 'block';
 }
 
 // Oyunu sıfırla
@@ -559,138 +557,49 @@ function updateScoreDisplay() {
     document.querySelector('.level-text').textContent = `Level: ${level}`;
 }
 
-// Tuş kontrolü
-function handleKeyDown(e) {
-    console.log("Key pressed:", e.key);
-    
-    if (!gameStarted && e.key.startsWith('Arrow')) {
-        startGame();
-    }
-    
-    if (!gameStarted) return;
-
-    switch(e.key) {
-        case 'ArrowUp':
-            if (dy !== 1) { // Aşağıya gidiyorsa yukarı gidemez
-                dx = 0;
-                dy = -1;
-            }
-            break;
-        case 'ArrowDown':
-            if (dy !== -1) { // Yukarı gidiyorsa aşağı gidemez
-                dx = 0;
-                dy = 1;
-            }
-            break;
-        case 'ArrowLeft':
-            if (dx !== 1) { // Sağa gidiyorsa sola gidemez
-                dx = -1;
-                dy = 0;
-            }
-            break;
-        case 'ArrowRight':
-            if (dx !== -1) { // Sola gidiyorsa sağa gidemez
-                dx = 1;
-                dy = 0;
-            }
-            break;
-    }
-}
-
-// Buton kontrolü
-function handleButtonClick(direction) {
-    console.log("Button clicked:", direction);
-    
-    if (!gameStarted) {
-        startGame();
-    }
-    
-    if (!gameStarted || isDemo) return;
-
-    switch(direction) {
-        case 'up':
-            if (dy !== 1) {
-                dx = 0;
-                dy = -1;
-            }
-            break;
-        case 'down':
-            if (dy !== -1) {
-                dx = 0;
-                dy = 1;
-            }
-            break;
-        case 'left':
-            if (dx !== 1) {
-                dx = -1;
-                dy = 0;
-            }
-            break;
-        case 'right':
-            if (dx !== -1) {
-                dx = 1;
-                dy = 0;
-            }
-            break;
-    }
-}
-
-// Simplified demo mode functions
+// Update demo mode functions
 function startDemo() {
     console.log("Starting demo mode");
     
-    // First, completely reset the game
-    resetGame();
-    
-    // Set demo flag
+    if (isDemo) return;
     isDemo = true;
     
-    // Update button appearance
-    demoButton.innerHTML = '<i class="fas fa-stop"></i> Demo';
-    demoButton.classList.add('active');
+    // Reset game state
+    resetGame();
     
-    // Start from a good position
-    snake = [{ x: 5, y: 5 }];
-    dx = 1; // Start moving right
-    dy = 0;
+    // Set demo button text
+    demoButton.innerHTML = '<i class="fas fa-stop"></i> Stop Demo';
     
-    // Add some bombs for demonstration
-    addBombs(2);
-    
-    // Start the game
+    // Start game loop
     gameStarted = true;
+    isGameOver = false;
+    gameLoop = setInterval(update, 1000 / (baseSpeed - 2)); // Slower speed for demo
     
-    // Clear any existing game loop and start a new one
-    if (gameLoop) clearInterval(gameLoop);
-    gameLoop = setInterval(update, 1000 / speed);
-    
-    // Start the demo AI
-    if (demoTimeout) clearTimeout(demoTimeout);
-    demoTimeout = setTimeout(runDemoMove, 100);
-    
-    console.log("Demo started with snake at", snake[0].x, snake[0].y);
+    // Start demo AI
+    runDemoMove();
 }
 
 function stopDemo() {
     console.log("Stopping demo mode");
     
-    // Clear demo timeout
+    isDemo = false;
+    gameStarted = false;
+    
+    // Reset button text
+    demoButton.innerHTML = '<i class="fas fa-play"></i> Demo';
+    
+    // Stop game loop
+    clearInterval(gameLoop);
+    gameLoop = null;
+    
+    // Stop demo timeout
     if (demoTimeout) {
         clearTimeout(demoTimeout);
         demoTimeout = null;
     }
     
-    // Reset demo flag
-    isDemo = false;
-    
-    // Update button appearance
-    demoButton.innerHTML = '<i class="fas fa-play"></i> Demo';
-    demoButton.classList.remove('active');
-    
-    // Reset the game
+    // Reset game state
     resetGame();
-    
-    console.log("Demo stopped");
 }
 
 function runDemoMove() {
@@ -1296,6 +1205,26 @@ function setupEventListeners() {
     infoBtn.className = 'game-btn';
     infoBtn.innerHTML = '<i class="fas fa-info-circle"></i> Guide';
     document.querySelector('.game-buttons').appendChild(infoBtn);
+    
+    // Add mute button to controls section
+    const muteBtn = document.createElement('button');
+    muteBtn.id = 'muteBtn';
+    muteBtn.className = 'game-btn';
+    muteBtn.innerHTML = '<i class="fas fa-volume-up"></i> Sound';
+    document.querySelector('.game-buttons').appendChild(muteBtn);
+    
+    // Mute button functionality
+    muteBtn.addEventListener('click', () => {
+        isMuted = !isMuted;
+        
+        if (isMuted) {
+            muteBtn.innerHTML = '<i class="fas fa-volume-mute"></i> Muted';
+            muteBtn.classList.add('muted');
+        } else {
+            muteBtn.innerHTML = '<i class="fas fa-volume-up"></i> Sound';
+            muteBtn.classList.remove('muted');
+        }
+    });
 
     // Toggle food guide
     infoBtn.addEventListener('click', () => {
@@ -1342,15 +1271,7 @@ function createDirectionArrows() {
             e.stopPropagation();
             console.log(`${direction} arrow touched`);
             
-            // First remove any existing feedback animations from all arrows
-            directions.forEach(dir => {
-                const dirArrow = arrowsContainer.querySelector(`.direction-arrow.${dir}`);
-                if (dirArrow) {
-                    dirArrow.classList.remove('feedback-active');
-                }
-            });
-            
-            // Then add the feedback animation class only to this arrow
+            // Add the feedback animation class
             arrow.classList.add('feedback-active');
             
             // Execute the direction change
@@ -1375,18 +1296,13 @@ function createDirectionArrows() {
     console.log("Direction arrows created with visual indicators");
 }
 
-// Improved arrow click handler
+// Update handleArrowClick to prevent controls during demo mode
 function handleArrowClick(direction) {
-    console.log(`Arrow clicked: ${direction}`);
-    
-    if (isGameOver) {
-        console.log("Game is over, ignoring arrow click");
-        return;
-    }
+    // No controls during demo mode
+    if (isDemo || isGameOver) return;
     
     // Start game if not started
     if (!gameStarted) {
-        console.log("Starting game from arrow click");
         startGame();
     }
     
@@ -1396,36 +1312,24 @@ function handleArrowClick(direction) {
             if (dy !== 1) { // Not moving down
                 dx = 0;
                 dy = -1;
-                console.log("Direction changed to UP");
-            } else {
-                console.log("Cannot move UP while moving DOWN");
             }
             break;
         case 'right':
             if (dx !== -1) { // Not moving left
                 dx = 1;
                 dy = 0;
-                console.log("Direction changed to RIGHT");
-            } else {
-                console.log("Cannot move RIGHT while moving LEFT");
             }
             break;
         case 'down':
             if (dy !== -1) { // Not moving up
                 dx = 0;
                 dy = 1;
-                console.log("Direction changed to DOWN");
-            } else {
-                console.log("Cannot move DOWN while moving UP");
             }
             break;
         case 'left':
             if (dx !== 1) { // Not moving right
                 dx = -1;
                 dy = 0;
-                console.log("Direction changed to LEFT");
-            } else {
-                console.log("Cannot move LEFT while moving RIGHT");
             }
             break;
     }

@@ -1145,3 +1145,20 @@ body {
         max-height: min(80vh, 600px);
     }
 }
+
+/* Sound button styling */
+#muteBtn {
+    background-color: #2a9d8f;
+}
+
+#muteBtn:hover {
+    background-color: #1d7268;
+}
+
+#muteBtn.muted {
+    background-color: #e63946;
+}
+
+#muteBtn.muted:hover {
+    background-color: #c1121f;
+}
