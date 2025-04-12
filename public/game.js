@@ -104,9 +104,6 @@ function init() {
     });
     
     console.log("Game initialization started");
-    
-    // Diğer kontrol ve inicializasyondan sonra yön oklarını oluştur
-    createDirectionArrows();
 }
 
 // Wait for assets to load
@@ -1193,15 +1190,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Normal başlatma
     init();
-    
-    // Oyun içi kontrolleri oluştur
-    createInGameControls();
-    
-    // Mobil cihaz kontrolü
-    checkMobileDevice();
-    
-    // Create mobile controls
-    createMobileControls();
 });
 
 // Mobil cihaz kontrolü
@@ -1319,15 +1307,20 @@ function setupEventListeners() {
         foodGuide.style.display = 'none';
     });
 
-    // Add direction arrows for mobile
-    if (checkMobileDevice()) {
-        createDirectionArrows();
-    }
+    // Create direction arrows for all devices
+    createDirectionArrows();
 }
 
-// Oyun alanı kenarlarına yön okları ekle
+// Create direction arrows with semi-transparent indicators
 function createDirectionArrows() {
+    console.log("Creating direction arrows for mobile controls");
     const gameplaySection = document.querySelector('.gameplay-section');
+    
+    // Remove any existing direction arrows
+    const existingArrows = document.querySelector('.direction-arrows');
+    if (existingArrows) {
+        existingArrows.remove();
+    }
     
     // Create container for direction arrows
     const arrowsContainer = document.createElement('div');
@@ -1338,30 +1331,62 @@ function createDirectionArrows() {
     directions.forEach(direction => {
         const arrow = document.createElement('div');
         arrow.className = `direction-arrow ${direction}`;
+        arrow.setAttribute('data-direction', direction);
         
-        // Add touch and click event listeners
-        arrow.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            handleArrowClick(direction);
-        });
+        // Make sure there's no content in the div before the ::after pseudo-element
+        arrow.innerHTML = '';
         
-        arrow.addEventListener('click', (e) => {
+        // Add multiple event listeners for better responsiveness
+        const handleTouch = (e) => {
             e.preventDefault();
+            e.stopPropagation();
+            console.log(`${direction} arrow touched`);
+            
+            // First remove any existing feedback animations from all arrows
+            directions.forEach(dir => {
+                const dirArrow = arrowsContainer.querySelector(`.direction-arrow.${dir}`);
+                if (dirArrow) {
+                    dirArrow.classList.remove('feedback-active');
+                }
+            });
+            
+            // Then add the feedback animation class only to this arrow
+            arrow.classList.add('feedback-active');
+            
+            // Execute the direction change
             handleArrowClick(direction);
-        });
+            
+            // Remove the animation class after it completes
+            setTimeout(() => {
+                arrow.classList.remove('feedback-active');
+            }, 500);
+        };
+        
+        // Add various touch event listeners for better handling
+        arrow.addEventListener('touchstart', handleTouch, { passive: false });
+        arrow.addEventListener('mousedown', handleTouch, { passive: false });
+        arrow.addEventListener('click', handleTouch, { passive: false });
         
         arrowsContainer.appendChild(arrow);
     });
     
     // Add arrows container to gameplay section
     gameplaySection.appendChild(arrowsContainer);
+    console.log("Direction arrows created with visual indicators");
 }
 
+// Improved arrow click handler
 function handleArrowClick(direction) {
-    if (isGameOver) return;
+    console.log(`Arrow clicked: ${direction}`);
+    
+    if (isGameOver) {
+        console.log("Game is over, ignoring arrow click");
+        return;
+    }
     
     // Start game if not started
     if (!gameStarted) {
+        console.log("Starting game from arrow click");
         startGame();
     }
     
@@ -1371,24 +1396,36 @@ function handleArrowClick(direction) {
             if (dy !== 1) { // Not moving down
                 dx = 0;
                 dy = -1;
+                console.log("Direction changed to UP");
+            } else {
+                console.log("Cannot move UP while moving DOWN");
             }
             break;
         case 'right':
             if (dx !== -1) { // Not moving left
                 dx = 1;
                 dy = 0;
+                console.log("Direction changed to RIGHT");
+            } else {
+                console.log("Cannot move RIGHT while moving LEFT");
             }
             break;
         case 'down':
             if (dy !== -1) { // Not moving up
                 dx = 0;
                 dy = 1;
+                console.log("Direction changed to DOWN");
+            } else {
+                console.log("Cannot move DOWN while moving UP");
             }
             break;
         case 'left':
             if (dx !== 1) { // Not moving right
                 dx = -1;
                 dy = 0;
+                console.log("Direction changed to LEFT");
+            } else {
+                console.log("Cannot move LEFT while moving RIGHT");
             }
             break;
     }
