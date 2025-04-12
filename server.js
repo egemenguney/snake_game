@@ -1,36 +1,71 @@
 const express = require('express');
-const sqlite3 = require('sqlite3').verbose();
 const cors = require('cors');
 const path = require('path');
 const app = express();
 
-// Port configuration
+// Import database based on environment
+let db;
+if (process.env.DATABASE_URL) {
+    // Postgres setup for production
+    const { Pool } = require('pg');
+    const pool = new Pool({
+        connectionString: process.env.DATABASE_URL,
+        ssl: {
+            rejectUnauthorized: false
+        }
+    });
+    
+    // Create scores table
+    pool.query(`
+        CREATE TABLE IF NOT EXISTS scores (
+            id SERIAL PRIMARY KEY,
+            nickname TEXT NOT NULL,
+            score INTEGER NOT NULL,
+            stage INTEGER NOT NULL,
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    `).catch(err => console.error('Error creating table:', err));
+    
+    db = {
+        all: (query, params, callback) => {
+            pool.query(query.replace('?', '$1'), params)
+                .then(res => callback(null, res.rows))
+                .catch(err => callback(err));
+        },
+        run: (query, params, callback) => {
+            pool.query(query.replace(/\?/g, (_, i) => `$${i+1}`), params)
+                .then(res => callback.call({lastID: res.rows[0]?.id}))
+                .catch(err => callback(err));
+        }
+    };
+} else {
+    // SQLite for development
+    const sqlite3 = require('sqlite3').verbose();
+    db = new sqlite3.Database(':memory:', (err) => {
+        if (err) {
+            console.error('Error opening database:', err);
+        } else {
+            console.log('Connected to in-memory SQLite database');
+            db.run(`
+                CREATE TABLE IF NOT EXISTS scores (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    nickname TEXT NOT NULL,
+                    score INTEGER NOT NULL,
+                    stage INTEGER NOT NULL,
+                    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
+        }
+    });
+}
+
+// Port configuration - important for Heroku
 const PORT = process.env.PORT || 3000;
-const HOST = 'localhost';
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
-
-// Create SQLite database connection
-const db = new sqlite3.Database(':memory:', (err) => {
-    if (err) {
-        console.error('Error opening database:', err);
-    } else {
-        console.log('Connected to in-memory SQLite database');
-        // Create scores table if it doesn't exist
-        db.run(`
-            CREATE TABLE IF NOT EXISTS scores (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                nickname TEXT NOT NULL,
-                score INTEGER NOT NULL,
-                stage INTEGER NOT NULL,
-                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
-    }
-});
 
 // API Routes
 app.get('/api/scores', (req, res) => {
@@ -43,7 +78,7 @@ app.get('/api/scores', (req, res) => {
                 res.status(500).json({ error: 'Failed to fetch scores' });
                 return;
             }
-            res.json(rows);
+            res.json(rows || []);
         }
     );
 });
@@ -94,10 +129,9 @@ app.use((err, req, res, next) => {
     res.status(500).json({ error: 'Something went wrong!' });
 });
 
-// Start server with specific host and port
-app.listen(PORT, HOST, () => {
-    console.log(`Server running at http://${HOST}:${PORT}`);
-    console.log('Press Ctrl+C to stop the server');
+// Start server - CRITICAL FOR HEROKU
+app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
 });
 
 // Handle process termination
