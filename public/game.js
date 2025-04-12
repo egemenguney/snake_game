@@ -11,7 +11,7 @@ const demoButton = document.getElementById('demoButton');
 const leaderboardDiv = document.getElementById('leaderboard');
 const closeLeaderboardBtn = document.getElementById('closeLeaderboard');
 const showLeaderboardBtn = document.getElementById('showLeaderboard');
-const API_BASE_URL = 'http://localhost:3000/api';
+const API_BASE_URL = window.location.origin + '/api';
 
 // Oyun ayarları
 const tileCount = 20;
@@ -1318,96 +1318,78 @@ function setupEventListeners() {
     closeGuide.addEventListener('click', () => {
         foodGuide.style.display = 'none';
     });
+
+    // Add direction arrows for mobile
+    if (checkMobileDevice()) {
+        createDirectionArrows();
+    }
 }
 
 // Oyun alanı kenarlarına yön okları ekle
 function createDirectionArrows() {
     const gameplaySection = document.querySelector('.gameplay-section');
     
-    if (!gameplaySection) return;
+    // Create container for direction arrows
+    const arrowsContainer = document.createElement('div');
+    arrowsContainer.className = 'direction-arrows';
     
-    // Ok işaretleri container oluştur
-    const directionArrows = document.createElement('div');
-    directionArrows.className = 'direction-arrows';
-    
-    // Dört yöne ok ekle
-    const arrows = [
-        { direction: 'up', icon: 'fa-chevron-up', class: 'arrow-up' },
-        { direction: 'right', icon: 'fa-chevron-right', class: 'arrow-right' },
-        { direction: 'down', icon: 'fa-chevron-down', class: 'arrow-down' },
-        { direction: 'left', icon: 'fa-chevron-left', class: 'arrow-left' }
-    ];
-    
-    // Ok elementleri oluştur
-    const arrowElements = {};
-    arrows.forEach(arrow => {
-        const arrowElement = document.createElement('div');
-        arrowElement.className = `arrow ${arrow.class}`;
-        arrowElement.innerHTML = `<i class="fas ${arrow.icon}"></i>`;
-        directionArrows.appendChild(arrowElement);
-        arrowElements[arrow.direction] = arrowElement;
+    // Create arrows for each direction
+    const directions = ['up', 'right', 'down', 'left'];
+    directions.forEach(direction => {
+        const arrow = document.createElement('div');
+        arrow.className = `direction-arrow ${direction}`;
         
-        // Hem mouse hem de dokunma olayları ekle
-        arrowElement.addEventListener('mousedown', (e) => {
-            handleArrowClick(arrow.direction);
-        });
-        
-        arrowElement.addEventListener('touchstart', (e) => {
+        // Add touch and click event listeners
+        arrow.addEventListener('touchstart', (e) => {
             e.preventDefault();
-            handleArrowClick(arrow.direction);
+            handleArrowClick(direction);
         });
+        
+        arrow.addEventListener('click', (e) => {
+            e.preventDefault();
+            handleArrowClick(direction);
+        });
+        
+        arrowsContainer.appendChild(arrow);
     });
     
-    // Ok tıklaması için fonksiyon
-    function handleArrowClick(direction) {
-        // Okta vurgu göster
-        const arrow = arrowElements[direction];
-        arrow.classList.add('active');
-        
-        // Yönü değiştir
-        handleButtonClick(direction);
-        
-        // Vurguyu kaldır
-        setTimeout(() => {
-            arrow.classList.remove('active');
-        }, 300);
+    // Add arrows container to gameplay section
+    gameplaySection.appendChild(arrowsContainer);
+}
+
+function handleArrowClick(direction) {
+    if (isGameOver) return;
+    
+    // Start game if not started
+    if (!gameStarted) {
+        startGame();
     }
     
-    // Ok yönünü güncelle
-    function updateDirectionArrows() {
-        // Tüm okları normal duruma getir
-        Object.values(arrowElements).forEach(arrow => {
-            arrow.classList.remove('active');
-        });
-        
-        // Mevcut hareket yönündeki oku vurgula
-        if (dx === 0 && dy === -1) arrowElements.up.classList.add('active');
-        else if (dx === 1 && dy === 0) arrowElements.right.classList.add('active');
-        else if (dx === 0 && dy === 1) arrowElements.down.classList.add('active');
-        else if (dx === -1 && dy === 0) arrowElements.left.classList.add('active');
-    }
-    
-    // Oyun güncellemesi sırasında okları da güncelle
-    const originalUpdate = update;
-    update = function() {
-        originalUpdate();
-        updateDirectionArrows();
-    };
-    
-    // Klavye olaylarında okları güncelle
-    document.addEventListener('keydown', (e) => {
-        if (e.key.startsWith('Arrow')) {
-            const direction = e.key.substring(5).toLowerCase();
-            if (arrowElements[direction]) {
-                arrowElements[direction].classList.add('active');
-                setTimeout(() => {
-                    arrowElements[direction].classList.remove('active');
-                }, 300);
+    // Update direction based on arrow clicked
+    switch(direction) {
+        case 'up':
+            if (dy !== 1) { // Not moving down
+                dx = 0;
+                dy = -1;
             }
-        }
-    });
-    
-    // Oyun alanına ekle
-    gameplaySection.appendChild(directionArrows);
-    console.log("Yön okları eklendi");
+            break;
+        case 'right':
+            if (dx !== -1) { // Not moving left
+                dx = 1;
+                dy = 0;
+            }
+            break;
+        case 'down':
+            if (dy !== -1) { // Not moving up
+                dx = 0;
+                dy = 1;
+            }
+            break;
+        case 'left':
+            if (dx !== 1) { // Not moving right
+                dx = -1;
+                dy = 0;
+            }
+            break;
+    }
 } 

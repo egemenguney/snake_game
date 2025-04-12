@@ -905,78 +905,109 @@ body {
 /* Oyun alanı kenarlarındaki yön okları */
 .direction-arrows {
     position: absolute;
-    top: 0;
-    left: 0;
     width: 100%;
     height: 100%;
     pointer-events: none;
-    z-index: 40;
+    z-index: 10;
 }
 
-.arrow {
+.direction-arrow {
     position: absolute;
-    color: rgba(0, 255, 0, 0.3);
+    width: 60px;
+    height: 60px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
     display: flex;
-    align-items: center;
     justify-content: center;
-    font-size: 24px;
-    transition: all 0.2s ease;
+    align-items: center;
+    cursor: pointer;
+    pointer-events: auto;
+    touch-action: none;
+    -webkit-tap-highlight-color: transparent;
 }
 
-.arrow i {
-    filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.4));
-}
-
-.arrow-up {
-    top: 5px;
+/* Position the arrows at the edges */
+.direction-arrow.up {
+    top: 20px;
     left: 50%;
     transform: translateX(-50%);
 }
 
-.arrow-right {
-    right: 5px;
+.direction-arrow.right {
+    right: 20px;
     top: 50%;
     transform: translateY(-50%);
 }
 
-.arrow-down {
-    bottom: 5px;
+.direction-arrow.down {
+    bottom: 20px;
     left: 50%;
     transform: translateX(-50%);
 }
 
-.arrow-left {
-    left: 5px;
+.direction-arrow.left {
+    left: 20px;
     top: 50%;
     transform: translateY(-50%);
 }
 
-/* Aktif ok vurgusu */
-.arrow.active {
-    color: rgba(0, 255, 0, 0.8);
-    transform: scale(1.2) translateX(-40%);
+/* Arrow icons */
+.direction-arrow::before {
+    content: '';
+    width: 20px;
+    height: 20px;
+    border-color: rgba(255, 255, 255, 0.8);
+    border-style: solid;
+    border-width: 3px 3px 0 0;
+    display: inline-block;
+    transform-origin: center;
 }
 
-.arrow-right.active {
-    transform: scale(1.2) translateY(-40%);
+.direction-arrow.up::before {
+    transform: rotate(-45deg);
 }
 
-.arrow-down.active {
-    transform: scale(1.2) translateX(-40%);
+.direction-arrow.right::before {
+    transform: rotate(45deg);
 }
 
-.arrow-left.active {
-    transform: scale(1.2) translateY(-40%);
+.direction-arrow.down::before {
+    transform: rotate(135deg);
 }
 
-/* Tüm ekran boyutlarında göster */
-@media screen and (min-width: 769px) {
-    .direction-arrows {
-        display: block;
+.direction-arrow.left::before {
+    transform: rotate(-135deg);
+}
+
+/* Active state */
+.direction-arrow:active {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Media queries for responsive sizing */
+@media (max-width: 768px) {
+    .direction-arrow {
+        width: 50px;
+        height: 50px;
+    }
+    
+    .direction-arrow::before {
+        width: 15px;
+        height: 15px;
     }
 }
 
-/* Pencere boyutuna göre kontrol butonları ve kenar okları görünürlüğü */
+@media (max-width: 480px) {
+    .direction-arrow {
+        width: 40px;
+        height: 40px;
+    }
+    
+    .direction-arrow::before {
+        width: 12px;
+        height: 12px;
+    }
+}
 
 /* Büyük ekranlar: Kenar okları görünmez, kontrol butonları görünür */
 @media screen and (min-width: 769px) and (min-height: 769px) {
@@ -1090,4 +1121,5 @@ body {
         max-width: min(80vh, 600px);
         max-height: min(80vh, 600px);
     }
+} 
 } 
