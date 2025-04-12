@@ -1,96 +1,285 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-const scoreElement = document.getElementById('score');
+const scoreElement = document.querySelector('.score-text');
+const levelElement = document.querySelector('.level-text');
+const modal = document.getElementById('nicknameModal');
+const finalScore = document.getElementById('finalScore');
+const nicknameInput = document.getElementById('nickname');
+const submitButton = document.getElementById('submitScore');
 const playAgainBtn = document.getElementById('playAgain');
-const leaderboardDiv = document.getElementById('leaderboard');
-const showLeaderboardBtn = document.getElementById('showLeaderboard');
-const closeLeaderboardBtn = document.getElementById('closeLeaderboard');
 const demoButton = document.getElementById('demoButton');
+const leaderboardDiv = document.getElementById('leaderboard');
+const closeLeaderboardBtn = document.getElementById('closeLeaderboard');
+const showLeaderboardBtn = document.getElementById('showLeaderboard');
+const API_BASE_URL = 'http://localhost:3000/api';
 
-// Game settings
-const gridSize = 20;
-const tileCount = canvas.width / gridSize;
+// Oyun ayarları
+const tileCount = 20;
+const gridSize = canvas.width / tileCount;
+const baseSpeed = 8;
+
+// Hareket yönleri
+const GRID_DIRECTIONS = [
+    { dx: 0, dy: -1 }, // up
+    { dx: 1, dy: 0 },  // right
+    { dx: 0, dy: 1 },  // down
+    { dx: -1, dy: 0 }  // left
+];
+
+// Oyun durumu
 let snake = [{ x: 10, y: 10 }];
 let food = { x: 5, y: 5 };
 let dx = 0;
 let dy = 0;
 let score = 0;
-let baseSpeed = 7;
-let speed = baseSpeed;
 let foodCount = 0;
-let gameLoop = null;
+let speed = baseSpeed;
 let gameStarted = false;
+let gameLoop = null;
 let isDemo = false;
-let demoTimeout;
+let demoTimeout = null;
+let foodType = 'apple';
+let isGameOver = false;
+let assetsLoaded = false;
+let bombs = [];
+let bombTimers = [];
 
-// Touch handling
-let touchStartX = 0;
-let touchStartY = 0;
-
-// Add these variables at the top with other game settings
-const DEMO_MAX_STAGE = 10;
-const DEMO_SAFE_DISTANCE = 2;
-
-// Add these constants at the top
-const API_BASE_URL = 'http://localhost:3000/api';
-const GRID_DIRECTIONS = [
-    { dx: 1, dy: 0 },   // right
-    { dx: 0, dy: 1 },   // down
-    { dx: -1, dy: 0 },  // left
-    { dx: 0, dy: -1 }   // up
-];
-
-// Add these constants at the top with other game settings
-const AI_STRATEGIES = {
-    EARLY_GAME: 1,    // Direct pathfinding
-    MID_GAME: 2,      // Safe pathfinding with space checking
-    LATE_GAME: 3      // Hamiltonian cycle
+// Game assets
+const assets = {
+    snakeHead: new Image(),
+    snakeBody: new Image(),
+    snakeDeadHead: new Image(),
+    apple: new Image(),
+    bomb: new Image(),
+    easterEgg: new Image(),
+    oliebol: new Image()
 };
 
-// Add these event listeners after DOM elements are defined
-const submitButton = document.getElementById('submitScore');
-const nicknameInput = document.getElementById('nickname');
-const modal = document.getElementById('nicknameModal');
-const upBtn = document.getElementById('upBtn');
-const downBtn = document.getElementById('downBtn');
-const leftBtn = document.getElementById('leftBtn');
-const rightBtn = document.getElementById('rightBtn');
-
-// Add these at the top with other game settings
-let lastDirection = { dx: 0, dy: 0 }; // Track the last actual movement
-let moveQueue = []; // Queue for buffering moves
-const QUEUE_MAX_LENGTH = 2; // Maximum number of moves to buffer
-
-// Add these constants at the top
-const DEMO_MOVE_DELAY = 100;
-const FOOD_WEIGHT = 1000;  // Increased priority for food
-
-// Add premium features
-const premiumFeatures = {
-  themes: [
-    { id: 'neon', price: 0.99, name: 'Neon Theme' },
-    { id: 'retro', price: 0.99, name: 'Retro Theme' }
-  ],
-  powerups: [
-    { id: 'slowmo', price: 1.99, name: 'Slow Motion' },
-    { id: 'shield', price: 2.99, name: 'Shield' }
-  ],
-  removeAds: true,
-  extraLevels: true,
-  customThemes: true,
-  multiplayerMode: true
-};
-
-// Demo için sabitler
-const DEMO_MAX_LEVEL = 5;   // Demo maksimum seviye
-
-function resizeCanvas() {
-    const size = canvas.width;
-    canvas.style.width = canvas.style.height = `${size}px`;
+// Initialize assets
+function initAssets() {
+    // Set image sources
+    assets.snakeHead.src = 'assets/png/snake_green_head.png';
+    assets.snakeBody.src = 'assets/png/snake_green_blob.png';
+    assets.snakeDeadHead.src = 'assets/png/snake_green_xx.png';
+    assets.apple.src = 'assets/png/apple.png';
+    assets.bomb.src = 'assets/png/bomb.png';
+    assets.easterEgg.src = 'assets/png/easter_egg.png';
+    assets.oliebol.src = 'assets/png/oliebol.png';
+    
+    // Add error handling for each image
+    Object.values(assets).forEach(img => {
+        img.onerror = function() {
+            console.error(`Failed to load image: ${img.src}`);
+            // Use fallback drawing if image fails to load
+        };
+    });
 }
 
+// Initialize game
+function init() {
+    console.log("Initializing game");
+    
+    // Initialize assets
+    initAssets();
+    
+    // Set up event listeners
+    setupEventListeners();
+    
+    // Wait for assets to load
+    waitForAssets().then(() => {
+        console.log("Assets loaded, game ready");
+        assetsLoaded = true;
+        
+        // Generate food
+        randomFood();
+        
+        // Draw initial state
+        draw();
+    }).catch(error => {
+        console.error("Error loading assets:", error);
+        // Continue with fallback rendering
+        assetsLoaded = true;
+        randomFood();
+        draw();
+    });
+    
+    console.log("Game initialization started");
+    
+    // Diğer kontrol ve inicializasyondan sonra yön oklarını oluştur
+    createDirectionArrows();
+}
+
+// Wait for assets to load
+function waitForAssets() {
+    const promises = Object.values(assets).map(img => {
+        return new Promise((resolve, reject) => {
+            if (img.complete) {
+                resolve();
+            } else {
+                img.onload = resolve;
+                img.onerror = reject;
+            }
+        });
+    });
+    
+    return Promise.all(promises);
+}
+
+// Draw game state with fallback for missing images
+function draw() {
+    // Clear canvas
+    ctx.fillStyle = '#2d2d2d';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Draw snake
+    snake.forEach((segment, index) => {
+        if (index === 0) {
+            // Draw head with rotation
+            ctx.save();
+            ctx.translate(segment.x * gridSize + gridSize/2, segment.y * gridSize + gridSize/2);
+            
+            // Calculate rotation based on direction
+            let angle = 0;
+            if (dx === 1) angle = Math.PI/2;
+            if (dx === -1) angle = -Math.PI/2;
+            if (dy === -1) angle = 0;
+            if (dy === 1) angle = Math.PI;
+            
+            ctx.rotate(angle);
+            
+            // Draw the head with fallback
+            const headImg = isGameOver ? assets.snakeDeadHead : assets.snakeHead;
+            if (headImg.complete && headImg.naturalWidth !== 0) {
+                ctx.drawImage(headImg, -gridSize/2, -gridSize/2, gridSize, gridSize);
+            } else {
+                // Fallback drawing if image fails to load
+                ctx.fillStyle = isGameOver ? 'red' : 'green';
+                ctx.fillRect(-gridSize/2, -gridSize/2, gridSize, gridSize);
+                ctx.fillStyle = 'white';
+                ctx.fillRect(-gridSize/4, -gridSize/4, gridSize/8, gridSize/8); // Eye
+            }
+            
+            ctx.restore();
+        } else {
+            // Draw body with fallback
+            if (assets.snakeBody.complete && assets.snakeBody.naturalWidth !== 0) {
+                ctx.drawImage(assets.snakeBody, segment.x * gridSize, segment.y * gridSize, gridSize, gridSize);
+            } else {
+                ctx.fillStyle = '#00aa00';
+                ctx.fillRect(segment.x * gridSize, segment.y * gridSize, gridSize - 2, gridSize - 2);
+            }
+        }
+    });
+    
+    // Draw bombs with different states
+    bombs.forEach(bomb => {
+        if (bomb.exploded) {
+            // Plus-shape explosion effect
+            const explosionTiles = [
+                {x: bomb.x, y: bomb.y},           // Center
+                {x: bomb.x, y: bomb.y - 1},        // Up
+                {x: bomb.x + 1, y: bomb.y},        // Right
+                {x: bomb.x, y: bomb.y + 1},        // Down
+                {x: bomb.x - 1, y: bomb.y}         // Left
+            ];
+            
+            // Draw explosion tiles
+            ctx.fillStyle = 'rgba(255, 0, 0, 0.5)';
+            explosionTiles.forEach(tile => {
+                const x = (tile.x + tileCount) % tileCount;
+                const y = (tile.y + tileCount) % tileCount;
+                ctx.fillRect(x * gridSize, y * gridSize, gridSize, gridSize);
+            });
+        } else if (bomb.exploding) {
+            // Warning effect
+            const flash = Math.floor(Date.now() / 100) % 2 === 0;
+            
+            const bombImg = assets.bomb;
+            if (bombImg.complete && bombImg.naturalWidth !== 0) {
+                ctx.drawImage(bombImg, bomb.x * gridSize, bomb.y * gridSize, gridSize, gridSize);
+            } else {
+                ctx.fillStyle = 'black';
+                ctx.beginPath();
+                ctx.arc(bomb.x * gridSize + gridSize/2, bomb.y * gridSize + gridSize/2, 
+                    gridSize/2 - 2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            if (flash) {
+                ctx.fillStyle = 'rgba(255, 0, 0, 0.5)';
+                ctx.fillRect(bomb.x * gridSize, bomb.y * gridSize, gridSize, gridSize);
+            }
+        } else {
+            // Normal bomb
+            const bombImg = assets.bomb;
+            if (bombImg.complete && bombImg.naturalWidth !== 0) {
+                ctx.drawImage(bombImg, bomb.x * gridSize, bomb.y * gridSize, gridSize, gridSize);
+            } else {
+                ctx.fillStyle = 'black';
+                ctx.beginPath();
+                ctx.arc(bomb.x * gridSize + gridSize/2, bomb.y * gridSize + gridSize/2, 
+                    gridSize/2 - 2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // Draw countdown
+            const elapsed = (Date.now() - bomb.createdAt) / 1000;
+            const remaining = Math.ceil(10 - elapsed);
+            
+            if (remaining <= 5) {
+                ctx.fillStyle = remaining <= 3 ? 'red' : 'white';
+                ctx.font = '12px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(remaining.toString(), 
+                    bomb.x * gridSize + gridSize/2, 
+                    bomb.y * gridSize + gridSize/2 + 4);
+            }
+        }
+    });
+    
+    // Draw food with fallback
+    let foodImg;
+    switch(foodType) {
+        case 'apple': foodImg = assets.apple; break;
+        case 'easterEgg': foodImg = assets.easterEgg; break;
+        case 'oliebol': foodImg = assets.oliebol; break;
+        default: foodImg = assets.apple;
+    }
+    
+    if (foodImg.complete && foodImg.naturalWidth !== 0) {
+        ctx.drawImage(foodImg, food.x * gridSize, food.y * gridSize, gridSize, gridSize);
+    } else {
+        // Fallback drawing if image fails to load
+        ctx.fillStyle = foodType === 'apple' ? 'red' : 
+                        foodType === 'easterEgg' ? 'purple' : 'orange';
+        ctx.beginPath();
+        ctx.arc(food.x * gridSize + gridSize/2, food.y * gridSize + gridSize/2, 
+            gridSize/2 - 2, 0, Math.PI * 2);
+        ctx.fill();
+    }
+}
+
+// Oyunu başlat
+function startGame() {
+    console.log("startGame called");
+    if (!gameStarted) {
+        gameStarted = true;
+        
+        // Başlangıç yönü (sağa doğru)
+        dx = 1;
+        dy = 0;
+        
+        // Oyun döngüsünü başlat
+        if (gameLoop) clearInterval(gameLoop);
+        gameLoop = setInterval(update, 1000 / speed);
+        
+        console.log("Game started with direction:", dx, dy);
+    }
+}
+
+// Rastgele yiyecek oluştur
 function randomFood() {
-    // Add some margin to prevent food from appearing at edges
+    // Add margin to prevent food from appearing at edges
     const margin = 1;
     
     let newFood;
@@ -99,55 +288,200 @@ function randomFood() {
             x: Math.floor(Math.random() * (tileCount - 2*margin)) + margin,
             y: Math.floor(Math.random() * (tileCount - 2*margin)) + margin
         };
-    } while (snake.some(segment => segment.x === newFood.x && segment.y === newFood.y));
+    } while (snake.some(segment => segment.x === newFood.x && segment.y === newFood.y) || 
+             bombs.some(bomb => bomb.x === newFood.x && bomb.y === newFood.y));
+    
+    // Determine food type based on game progression
+    const level = Math.floor(foodCount / 10) + 1;
+    
+    // Randomly select food type with increasing chances for special foods
+    const rand = Math.random();
+    
+    if (level >= 3 && rand < 0.1) {
+        foodType = 'easterEgg'; // double growth (10% chance at level 3+)
+    } else if (level >= 2 && rand < 0.2) {
+        foodType = 'oliebol'; // bonus points (20% chance at level 2+)
+    } else {
+        foodType = 'apple'; // regular food
+    }
+    
+    // Add bomb obstacles at higher levels
+    if (level >= 4 && !isGameOver && foodCount % 10 === 0) {
+        isGameOver = true;
+        addBombs(level - 3); // number of bombs scales with level
+    }
     
     food = newFood;
+    console.log(`New ${foodType} at:`, food.x, food.y);
 }
 
+// Çarpışma kontrolü
 function checkCollision(head) {
-    // Check self collision
     return snake.some((segment, index) => {
-        if (index === 0) return false; // Skip head
-        return segment.x === head.x && segment.y === head.y;
+        // İlk segmenti (kafayı) atla
+        return index > 0 && segment.x === head.x && segment.y === head.y;
     });
 }
 
+// Add a move queue to manage direction changes safely
+let moveQueue = [];
+const MAX_QUEUE_LENGTH = 2;
+
+// Modify handleKeyDown function to use moveQueue
+function handleKeyDown(e) {
+    // Start game on arrow key press
+    if (!gameStarted && e.key.startsWith('Arrow')) {
+        startGame();
+    }
+    
+    if (!gameStarted) return;
+
+    const currentDirection = { dx, dy };
+    let newDirection;
+
+    // Determine new direction based on key
+    switch(e.key) {
+        case 'ArrowUp':
+            newDirection = { dx: 0, dy: -1 };
+            break;
+        case 'ArrowDown':
+            newDirection = { dx: 0, dy: 1 };
+            break;
+        case 'ArrowLeft':
+            newDirection = { dx: -1, dy: 0 };
+            break;
+        case 'ArrowRight':
+            newDirection = { dx: 1, dy: 0 };
+            break;
+        default:
+            return; // Not an arrow key
+    }
+
+    // Only queue if it's a valid move (not directly opposite of current direction)
+    if (isValidDirectionChange(currentDirection, newDirection)) {
+        addToMoveQueue(newDirection);
+    }
+}
+
+// Modify handleButtonClick to use moveQueue as well
+function handleButtonClick(direction) {
+    // Start game on first button click
+    if (!gameStarted) {
+        startGame();
+    }
+    
+    if (!gameStarted || isDemo) return;
+
+    const currentDirection = { dx, dy };
+    let newDirection;
+
+    // Determine new direction based on button
+    switch(direction) {
+        case 'up':
+            newDirection = { dx: 0, dy: -1 };
+            break;
+        case 'down':
+            newDirection = { dx: 0, dy: 1 };
+            break;
+        case 'left':
+            newDirection = { dx: -1, dy: 0 };
+            break;
+        case 'right':
+            newDirection = { dx: 1, dy: 0 };
+            break;
+    }
+
+    // Only queue if it's a valid move
+    if (isValidDirectionChange(currentDirection, newDirection)) {
+        addToMoveQueue(newDirection);
+    }
+}
+
+// Check if direction change is valid
+function isValidDirectionChange(current, next) {
+    // Cannot go in the opposite direction
+    return !(current.dx + next.dx === 0 && current.dy + next.dy === 0);
+}
+
+// Add a move to the queue
+function addToMoveQueue(direction) {
+    // If queue is empty, check against current direction
+    if (moveQueue.length === 0) {
+        const currentDirection = { dx, dy };
+        if (isValidDirectionChange(currentDirection, direction)) {
+            moveQueue.push(direction);
+        }
+    } 
+    // If queue has moves, check against the last queued move
+    else if (moveQueue.length < MAX_QUEUE_LENGTH) {
+        const lastDirection = moveQueue[moveQueue.length - 1];
+        if (isValidDirectionChange(lastDirection, direction)) {
+            moveQueue.push(direction);
+        }
+    }
+}
+
+// Modify update function to use the move queue
 function update() {
     if (!gameStarted) return;
 
-    // Process the next move from the queue
+    // Process next move from queue
     if (moveQueue.length > 0) {
-        const nextMove = moveQueue[0];
-        if (isValidNextMove(nextMove)) {
-            dx = nextMove.dx;
-            dy = nextMove.dy;
-            lastDirection = { dx, dy };
-        }
-        moveQueue.shift(); // Remove the processed move
+        const nextMove = moveQueue.shift();
+        dx = nextMove.dx;
+        dy = nextMove.dy;
     }
 
-    const head = { x: snake[0].x + dx, y: snake[0].y + dy };
+    // Calculate new head position
+    const head = { 
+        x: snake[0].x + dx, 
+        y: snake[0].y + dy 
+    };
     
-    // Check wall collision
+    // Wall collision with wrapping
     if (head.x < 0) head.x = tileCount - 1;
     if (head.x >= tileCount) head.x = 0;
     if (head.y < 0) head.y = tileCount - 1;
     if (head.y >= tileCount) head.y = 0;
 
-    // Check self collision
+    // Self collision check - make sure to check only after the head has moved
     if (checkCollision(head)) {
+        isGameOver = true;
         gameOver();
         return;
     }
 
+    // Add new head
     snake.unshift(head);
 
-    // Check food collision
+    // Food collision check
     if (head.x === food.x && head.y === food.y) {
-        score += 10;
+        let pointsGained = 10;
+        let growthAmount = 1;
+        
+        // Special food effects
+        switch(foodType) {
+            case 'easterEgg':
+                growthAmount = 2; // Double growth
+                pointsGained = 15;
+                break;
+            case 'oliebol':
+                pointsGained = 25; // Bonus points
+                break;
+        }
+        
+        // Apply effects
+        score += pointsGained;
         foodCount++;
         
-        if (foodCount % 10 === 0) {
+        // Keep the tail (don't pop for growth amount times)
+        for (let i = 1; i < growthAmount; i++) {
+            const tail = snake[snake.length - 1];
+            snake.push({...tail}); // Add a copy of the tail
+        }
+        
+        // Level progression
+        if (Math.floor(foodCount / 10) > Math.floor(foodCount / 10)) {
             speed = baseSpeed + Math.floor(foodCount / 10) * 2;
             clearInterval(gameLoop);
             gameLoop = setInterval(update, 1000 / speed);
@@ -156,64 +490,48 @@ function update() {
         updateScoreDisplay();
         randomFood();
     } else {
+        // Remove tail if no food was eaten
         snake.pop();
     }
 
     draw();
 }
 
-function draw() {
-    // Clear canvas
-    ctx.fillStyle = '#2d2d2d';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Draw gridlines (optional, helps with visibility)
-    ctx.strokeStyle = '#333333';
-    ctx.lineWidth = 0.5;
-    
-    // Draw snake
-    ctx.fillStyle = '#00ff00';
-    ctx.shadowColor = '#00ff00';
-    ctx.shadowBlur = 10;
-    snake.forEach((segment) => {
-        ctx.fillRect(segment.x * gridSize, segment.y * gridSize, gridSize - 2, gridSize - 2);
-    });
-
-    // Draw food with enhanced visibility
-    ctx.fillStyle = '#ff0000';
-    ctx.shadowColor = '#ff0000';
-    ctx.shadowBlur = 15;
-    ctx.beginPath();
-    const centerX = food.x * gridSize + gridSize/2;
-    const centerY = food.y * gridSize + gridSize/2;
-    const radius = gridSize/2 - 2;
-    ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-    ctx.fill();
-    
-    // Reset shadow
-    ctx.shadowBlur = 0;
-}
-
+// Oyun bittiğinde
 function gameOver() {
     if (isDemo) {
         stopDemo();
         return;
     }
     
+    console.log("Game over!");
     clearInterval(gameLoop);
     gameLoop = null;
     gameStarted = false;
-    document.body.classList.remove('game-active');
     
-    const finalScore = document.getElementById('finalScore');
+    // Stop snake movement
+    dx = 0;
+    dy = 0;
+    
+    // Draw the final state with dead head
+    draw();
+    
+    // Show score and modal
+    const level = Math.floor(foodCount / 10) + 1;
     finalScore.innerHTML = `
         <span class="score-text">Score: ${score}</span>
-        <span class="level-text">Level ${Math.floor(foodCount / 10) + 1}</span>
+        <span class="level-text">Level: ${level}</span>
     `;
-    modal.style.display = 'block';
+    
+    // Show modal
+    setTimeout(() => {
+        modal.style.display = 'block';
+    }, 500); // Small delay to let player see the dead snake
 }
 
+// Oyunu sıfırla
 function resetGame() {
+    console.log("Game reset");
     clearTimeout(demoTimeout);
     clearInterval(gameLoop);
     gameLoop = null;
@@ -224,64 +542,354 @@ function resetGame() {
     foodCount = 0;
     speed = baseSpeed;
     gameStarted = false;
-    document.body.classList.remove('game-active');
+    isGameOver = false;
+    foodType = 'apple';
+    powerups = [];
+    bombs = [];
+    bombTimers = [];
     updateScoreDisplay();
-    playAgainBtn.style.display = 'none';
-    modal.style.display = 'none';
     randomFood();
     draw();
+    
+    // Reset the move queue
+    moveQueue = [];
 }
 
+// Skoru güncelle
+function updateScoreDisplay() {
+    const level = Math.floor(foodCount / 10) + 1;
+    document.querySelector('.score-text').textContent = `Score: ${score}`;
+    document.querySelector('.level-text').textContent = `Level: ${level}`;
+}
+
+// Tuş kontrolü
 function handleKeyDown(e) {
-    if (!gameStarted && gameLoop === null && e.key.startsWith('Arrow')) {
+    console.log("Key pressed:", e.key);
+    
+    if (!gameStarted && e.key.startsWith('Arrow')) {
         startGame();
     }
-
+    
     if (!gameStarted) return;
 
-    const newMove = getDirectionFromKey(e.key);
-    if (newMove && isValidNextMove(newMove)) {
-        addToMoveQueue(newMove);
+    switch(e.key) {
+        case 'ArrowUp':
+            if (dy !== 1) { // Aşağıya gidiyorsa yukarı gidemez
+                dx = 0;
+                dy = -1;
+            }
+            break;
+        case 'ArrowDown':
+            if (dy !== -1) { // Yukarı gidiyorsa aşağı gidemez
+                dx = 0;
+                dy = 1;
+            }
+            break;
+        case 'ArrowLeft':
+            if (dx !== 1) { // Sağa gidiyorsa sola gidemez
+                dx = -1;
+                dy = 0;
+            }
+            break;
+        case 'ArrowRight':
+            if (dx !== -1) { // Sola gidiyorsa sağa gidemez
+                dx = 1;
+                dy = 0;
+            }
+            break;
     }
 }
 
-function handleTouchStart(e) {
-    touchStartX = e.touches[0].clientX;
-    touchStartY = e.touches[0].clientY;
-}
-
-function handleTouchMove(e) {
-    if (!gameStarted || gameLoop === null) return;
-
-    if (!touchStartX || !touchStartY) return;
-
-    const touchEndX = e.touches[0].clientX;
-    const touchEndY = e.touches[0].clientY;
-
-    const deltaX = touchEndX - touchStartX;
-    const deltaY = touchEndY - touchStartY;
-
-    if (Math.abs(deltaX) > Math.abs(deltaY)) {
-        if (deltaX > 0 && dx !== -1) { dx = 1; dy = 0; }
-        else if (deltaX < 0 && dx !== 1) { dx = -1; dy = 0; }
-    } else {
-        if (deltaY > 0 && dy !== -1) { dx = 0; dy = 1; }
-        else if (deltaY < 0 && dy !== 1) { dx = 0; dy = -1; }
-    }
-
-    touchStartX = null;
-    touchStartY = null;
-}
-
-function startGame() {
+// Buton kontrolü
+function handleButtonClick(direction) {
+    console.log("Button clicked:", direction);
+    
     if (!gameStarted) {
-        gameStarted = true;
-        document.body.classList.add('game-active');
-        if (gameLoop) clearInterval(gameLoop);
-        gameLoop = setInterval(update, 1000 / speed);
+        startGame();
+    }
+    
+    if (!gameStarted || isDemo) return;
+
+    switch(direction) {
+        case 'up':
+            if (dy !== 1) {
+                dx = 0;
+                dy = -1;
+            }
+            break;
+        case 'down':
+            if (dy !== -1) {
+                dx = 0;
+                dy = 1;
+            }
+            break;
+        case 'left':
+            if (dx !== 1) {
+                dx = -1;
+                dy = 0;
+            }
+            break;
+        case 'right':
+            if (dx !== -1) {
+                dx = 1;
+                dy = 0;
+            }
+            break;
     }
 }
 
+// Simplified demo mode functions
+function startDemo() {
+    console.log("Starting demo mode");
+    
+    // First, completely reset the game
+    resetGame();
+    
+    // Set demo flag
+    isDemo = true;
+    
+    // Update button appearance
+    demoButton.innerHTML = '<i class="fas fa-stop"></i> Demo';
+    demoButton.classList.add('active');
+    
+    // Start from a good position
+    snake = [{ x: 5, y: 5 }];
+    dx = 1; // Start moving right
+    dy = 0;
+    
+    // Add some bombs for demonstration
+    addBombs(2);
+    
+    // Start the game
+    gameStarted = true;
+    
+    // Clear any existing game loop and start a new one
+    if (gameLoop) clearInterval(gameLoop);
+    gameLoop = setInterval(update, 1000 / speed);
+    
+    // Start the demo AI
+    if (demoTimeout) clearTimeout(demoTimeout);
+    demoTimeout = setTimeout(runDemoMove, 100);
+    
+    console.log("Demo started with snake at", snake[0].x, snake[0].y);
+}
+
+function stopDemo() {
+    console.log("Stopping demo mode");
+    
+    // Clear demo timeout
+    if (demoTimeout) {
+        clearTimeout(demoTimeout);
+        demoTimeout = null;
+    }
+    
+    // Reset demo flag
+    isDemo = false;
+    
+    // Update button appearance
+    demoButton.innerHTML = '<i class="fas fa-play"></i> Demo';
+    demoButton.classList.remove('active');
+    
+    // Reset the game
+    resetGame();
+    
+    console.log("Demo stopped");
+}
+
+function runDemoMove() {
+    if (!isDemo || !gameStarted) {
+        console.log("Demo mode inactive, not running move");
+        return;
+    }
+    
+    // Get the current head position
+    const head = snake[0];
+    console.log("Demo snake head at", head.x, head.y);
+    
+    // Find the best move
+    const nextMove = findSimpleDemoMove(head);
+    console.log("Demo choosing move", nextMove.dx, nextMove.dy);
+    
+    // Apply the move
+    dx = nextMove.dx;
+    dy = nextMove.dy;
+    
+    // Schedule next move
+    demoTimeout = setTimeout(runDemoMove, 150);
+}
+
+// Simple and reliable AI for demo mode
+function findSimpleDemoMove(head) {
+    // Get safe moves (don't hit snake or bombs)
+    const safeMoves = [
+        { dx: 1, dy: 0 },  // right
+        { dx: 0, dy: 1 },  // down
+        { dx: -1, dy: 0 }, // left
+        { dx: 0, dy: -1 }  // up
+    ].filter(move => {
+        // Can't reverse direction
+        if ((move.dx === -dx && move.dy === -dy) && (dx !== 0 || dy !== 0)) {
+            return false;
+        }
+        
+        // Calculate next position with wrapping
+        const nextX = (head.x + move.dx + tileCount) % tileCount;
+        const nextY = (head.y + move.dy + tileCount) % tileCount;
+        
+        // Check for snake collision (except tail which will move)
+        const hitSnake = snake.some((segment, index) => {
+            // Ignore tail if we're not growing
+            if (index === snake.length - 1 && 
+                !(head.x === food.x && head.y === food.y)) {
+                return false;
+            }
+            return index > 0 && segment.x === nextX && segment.y === nextY;
+        });
+        
+        // Check for bomb collision
+        const hitBomb = bombs.some(bomb => 
+            bomb.x === nextX && bomb.y === nextY
+        );
+        
+        return !hitSnake && !hitBomb;
+    });
+    
+    console.log("Safe moves:", safeMoves.length);
+    
+    // If no safe moves, try any move that doesn't immediately kill us
+    if (safeMoves.length === 0) {
+        console.log("No safe moves, using current direction");
+        return { dx, dy };
+    }
+    
+    // Sort moves by distance to food
+    safeMoves.sort((a, b) => {
+        const posA = {
+            x: (head.x + a.dx + tileCount) % tileCount,
+            y: (head.y + a.dy + tileCount) % tileCount
+        };
+        
+        const posB = {
+            x: (head.x + b.dx + tileCount) % tileCount,
+            y: (head.y + b.dy + tileCount) % tileCount
+        };
+        
+        // Manhattan distance to food
+        const distA = Math.abs(posA.x - food.x) + Math.abs(posA.y - food.y);
+        const distB = Math.abs(posB.x - food.x) + Math.abs(posB.y - food.y);
+        
+        return distA - distB;
+    });
+    
+    // Return the move that gets us closest to food
+    return safeMoves[0];
+}
+
+// Make sure addBombs function is correctly defined
+function addBombs(count) {
+    for (let i = 0; i < count; i++) {
+        let bombPos;
+        let attempts = 0;
+        
+        do {
+            bombPos = {
+                x: Math.floor(Math.random() * tileCount),
+                y: Math.floor(Math.random() * tileCount)
+            };
+            attempts++;
+            
+            // Give up after too many attempts
+            if (attempts > 20) break;
+            
+        } while (
+            snake.some(segment => segment.x === bombPos.x && segment.y === bombPos.y) ||
+            (bombPos.x === food.x && bombPos.y === food.y) ||
+            bombs.some(bomb => bomb.x === bombPos.x && bomb.y === bombPos.y)
+        );
+        
+        if (attempts <= 20) {
+            // Add bomb with timer
+            const newBomb = {
+                x: bombPos.x,
+                y: bombPos.y,
+                createdAt: Date.now(),
+                exploding: false,
+                exploded: false
+            };
+            
+            bombs.push(newBomb);
+            
+            // Set timer for bomb explosion (10 seconds)
+            const bombTimer = setTimeout(() => {
+                triggerBombExplosion(newBomb);
+            }, 10000);
+            
+            bombTimers.push(bombTimer);
+        }
+    }
+}
+
+// Update bomb explosion to plus shape
+function triggerBombExplosion(bomb) {
+    if (!bomb || bomb.exploded) return;
+    
+    // Mark bomb as exploding
+    bomb.exploding = true;
+    
+    // Update visual to show exploding bomb
+    draw();
+    
+    // Set timer for full explosion (1 second after warning)
+    setTimeout(() => {
+        if (!bomb || bomb.exploded) return;
+        
+        // Mark bomb as exploded
+        bomb.exploded = true;
+        
+        // Check if snake is in explosion radius (plus shape)
+        checkPlusShapeExplosionDamage(bomb);
+        
+        // Remove the bomb after explosion
+        setTimeout(() => {
+            bombs = bombs.filter(b => b !== bomb);
+            draw();
+        }, 500);
+        
+    }, 1000);
+}
+
+// Check if explosion damages the snake (plus shape only)
+function checkPlusShapeExplosionDamage(bomb) {
+    // Plus shape explosion - only directly adjacent tiles (up, down, left, right)
+    const explosionTiles = [
+        {x: bomb.x, y: bomb.y},           // Center (bomb itself)
+        {x: bomb.x, y: bomb.y - 1},        // Up
+        {x: bomb.x + 1, y: bomb.y},        // Right
+        {x: bomb.x, y: bomb.y + 1},        // Down
+        {x: bomb.x - 1, y: bomb.y}         // Left
+    ];
+    
+    // Handle wrapping for explosion tiles
+    const wrappedExplosionTiles = explosionTiles.map(tile => ({
+        x: (tile.x + tileCount) % tileCount,
+        y: (tile.y + tileCount) % tileCount
+    }));
+    
+    // Check each snake segment
+    for (let i = 0; i < snake.length; i++) {
+        const segment = snake[i];
+        
+        // Check if segment is in any explosion tile
+        if (wrappedExplosionTiles.some(tile => 
+            tile.x === segment.x && tile.y === segment.y)) {
+            isGameOver = true;
+            gameOver();
+            return;
+        }
+    }
+}
+
+// Liderlik tablosunu güncelle
 async function updateLeaderboard() {
     try {
         const response = await fetch(`${API_BASE_URL}/scores`);
@@ -302,22 +910,22 @@ async function updateLeaderboard() {
 
         leaderboardList.innerHTML = topScores.map((score, index) => `
             <div class="leaderboard-item">
-                <span class="leaderboard-rank">#${index + 1} </span>
-                <span class="leaderboard-name">${score.nickname} </span>
+                <span class="leaderboard-rank">#${index + 1}</span>
+                <span class="leaderboard-name">${score.nickname}</span>
                 <div class="score-info">
-                    <span class="score-value">${score.score} </span>
-                    <span class="score-stage">Stage ${score.stage} </span>
+                    <span class="score-value">${score.score}</span>
+                    <span class="score-stage">Level ${score.stage} </span>
                 </div>
             </div>
         `).join('');
         
     } catch (error) {
         console.error('Error updating leaderboard:', error);
-        const leaderboardList = document.getElementById('leaderboardList');
-        leaderboardList.innerHTML = '<div class="leaderboard-item">Error loading scores</div>';
+        document.getElementById('leaderboardList').innerHTML = '<div class="leaderboard-item">Error loading scores</div>';
     }
 }
 
+// Skoru gönder
 async function submitScore(nickname) {
     try {
         const response = await fetch(`${API_BASE_URL}/scores`, {
@@ -344,6 +952,7 @@ async function submitScore(nickname) {
     }
 }
 
+// Skor gönderme işleyicisi
 function handleScoreSubmission() {
     const nickname = nicknameInput.value.trim();
     if (!nickname) {
@@ -357,7 +966,6 @@ function handleScoreSubmission() {
     submitScore(nickname)
         .then(() => {
             modal.style.display = 'none';
-            playAgainBtn.style.display = 'block';
             updateLeaderboard();
         })
         .catch(error => {
@@ -370,412 +978,436 @@ function handleScoreSubmission() {
         });
 }
 
-// Update demo-related functions
-function startDemo() {
-    resetGame();
-    isDemo = true;
-    demoButton.innerHTML = '<i class="fas fa-stop"></i> Stop Demo';
-    demoButton.classList.add('active');
+// Add bomb obstacles
+function addBombObstacles(count) {
+    // Clear existing bombs
+    powerups = powerups.filter(pu => pu.type !== 'bomb');
     
-    // Start from a strategic position
-    snake = [{ x: 5, y: 5 }];
-    dx = 1; // Başlangıçta sağa doğru hareket et
-    dy = 0;
-    gameStarted = true;
-    speed = baseSpeed;
-    
-    // Game loop'u başlat
-    if (gameLoop) clearInterval(gameLoop);
-    gameLoop = setInterval(update, 1000 / speed);
-    
-    // Demo hareketi başlat
-    setTimeout(runDemoMove, DEMO_MOVE_DELAY);
-}
-
-function stopDemo() {
-    clearTimeout(demoTimeout);
-    isDemo = false;
-    demoButton.innerHTML = '<i class="fas fa-play"></i> Watch Demo';
-    demoButton.classList.remove('active');
-    resetGame();
-}
-
-function runDemoMove() {
-    if (!isDemo) return;
-    
-    const head = snake[0];
-    
-    // Mevcut seviyeyi kontrol et
-    const currentLevel = Math.floor(foodCount / 10) + 1;
-    if (currentLevel > DEMO_MAX_LEVEL) {
-        stopDemo();
-        alert(`Demo tamamlandı! Seviye ${DEMO_MAX_LEVEL}'e ulaşıldı.`);
-        return;
+    // Add new bombs
+    for (let i = 0; i < count; i++) {
+        let bombPos;
+        do {
+            bombPos = {
+                x: Math.floor(Math.random() * tileCount),
+                y: Math.floor(Math.random() * tileCount),
+                type: 'bomb'
+            };
+        } while (
+            (bombPos.x === food.x && bombPos.y === food.y) || 
+            snake.some(segment => segment.x === bombPos.x && segment.y === bombPos.y) ||
+            powerups.some(pu => pu.x === bombPos.x && pu.y === bombPos.y)
+        );
+        
+        powerups.push(bombPos);
     }
-    
-    // En iyi hamleyi bul
-    const nextMove = findBestMove(head);
-    
-    // Yönü güncelle
-    dx = nextMove.dx;
-    dy = nextMove.dy;
-    
-    // Sonraki hamle için planlama yap
-    demoTimeout = setTimeout(runDemoMove, DEMO_MOVE_DELAY);
 }
 
-function findBestMove(head) {
-    // Yemeğe olan mesafe
-    const xDist = food.x - head.x;
-    const yDist = food.y - head.y;
+// Create control areas that stick to the inner edges of gameplay section
+function createInGameControls() {
+    const gameplaySection = document.querySelector('.gameplay-section');
     
-    // Olası hamleleri topla
-    const possibleMoves = getPossibleMoves(head);
+    if (!gameplaySection) return;
     
-    // Eğer herhangi bir güvenli hamle yoksa, son çare olarak mevcut yönde devam et
-    if (possibleMoves.length === 0) {
-        return { dx, dy };
-    }
+    // Create container
+    const inGameControls = document.createElement('div');
+    inGameControls.className = 'in-game-controls';
     
-    // Hareketleri yemeğe olan mesafeye göre sırala
-    possibleMoves.sort((moveA, moveB) => {
-        const nextPosA = {
-            x: (head.x + moveA.dx + tileCount) % tileCount,
-            y: (head.y + moveA.dy + tileCount) % tileCount
-        };
+    // Create areas for each direction taking up entire edges
+    const directions = [
+        {name: 'up', position: 'top'},
+        {name: 'right', position: 'right'},
+        {name: 'down', position: 'bottom'},
+        {name: 'left', position: 'left'}
+    ];
+    
+    directions.forEach(dir => {
+        const area = document.createElement('div');
+        area.id = `game${dir.name.charAt(0).toUpperCase() + dir.name.slice(1)}Area`;
+        area.className = 'game-control-area';
         
-        const nextPosB = {
-            x: (head.x + moveB.dx + tileCount) % tileCount,
-            y: (head.y + moveB.dy + tileCount) % tileCount
-        };
+        // Touch events for mobile
+        area.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            area.classList.add('active');
+            handleButtonClick(dir.name);
+        });
         
-        const distA = getManhattanDistance(nextPosA, food);
-        const distB = getManhattanDistance(nextPosB, food);
+        area.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            area.classList.remove('active');
+        });
         
-        return distA - distB;
+        // Mouse events for testing
+        area.addEventListener('mousedown', () => {
+            area.classList.add('active');
+            handleButtonClick(dir.name);
+        });
+        
+        area.addEventListener('mouseup', () => {
+            area.classList.remove('active');
+        });
+        
+        inGameControls.appendChild(area);
     });
     
-    // Yemeğe yaklaşmayı ve güvenliği dengele
-    for (const move of possibleMoves) {
-        if (isSuperSafe(head, move)) {
-            return move;
-        }
-    }
-    
-    // En güvenli hamleyi bulamadıysak, en azından çarpmayan bir hamle yapalım
-    for (const move of possibleMoves) {
-        if (isSafeMove(head, move)) {
-            return move;
-        }
-    }
-    
-    // Son çare olarak ilk olası hamleyi dön
-    return possibleMoves[0];
+    gameplaySection.appendChild(inGameControls);
+    console.log("Edge-attached control areas created");
 }
 
-function getPossibleMoves(head) {
-    return [
-        { dx: 1, dy: 0 },   // sağ
-        { dx: 0, dy: 1 },   // aşağı
-        { dx: -1, dy: 0 },  // sol
-        { dx: 0, dy: -1 }   // yukarı
-    ].filter(move => {
-        // Mevcut yönün tersi olamaz
-        if ((move.dx === -dx && move.dy === -dy) && (dx !== 0 || dy !== 0)) {
-            return false;
-        }
-        
-        const nextPos = {
-            x: (head.x + move.dx + tileCount) % tileCount,
-            y: (head.y + move.dy + tileCount) % tileCount
-        };
-        
-        return !wouldCollide(nextPos);
+// Create mobile controls for gameplay section
+function createMobileControls() {
+    const gameplaySection = document.querySelector('.gameplay-section');
+    if (!gameplaySection) return;
+    
+    // Create mobile controls container
+    const mobileControls = document.createElement('div');
+    mobileControls.className = 'mobile-controls';
+    
+    // Create swipe area
+    const swipeArea = document.createElement('div');
+    swipeArea.className = 'swipe-area';
+    
+    // Create direction indicators
+    const directions = [
+        {name: 'up', icon: 'fa-chevron-up', class: 'indicator-up'},
+        {name: 'right', icon: 'fa-chevron-right', class: 'indicator-right'},
+        {name: 'down', icon: 'fa-chevron-down', class: 'indicator-down'},
+        {name: 'left', icon: 'fa-chevron-left', class: 'indicator-left'}
+    ];
+    
+    // Create indicators
+    const indicators = {};
+    directions.forEach(dir => {
+        const indicator = document.createElement('div');
+        indicator.className = `direction-indicator ${dir.class}`;
+        indicator.innerHTML = `<i class="fas ${dir.icon}"></i>`;
+        mobileControls.appendChild(indicator);
+        indicators[dir.name] = indicator;
     });
-}
-
-function getManhattanDistance(pos1, pos2) {
-    let dx = Math.abs(pos1.x - pos2.x);
-    let dy = Math.abs(pos1.y - pos2.y);
     
-    // Ekranın kenarlarından geçiş imkanını hesaba kat
-    dx = Math.min(dx, tileCount - dx);
-    dy = Math.min(dy, tileCount - dy);
+    // Add swipe handling
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let lastDirection = null;
     
-    return dx + dy;
-}
-
-function isSuperSafe(head, move) {
-    const nextPos = {
-        x: (head.x + move.dx + tileCount) % tileCount,
-        y: (head.y + move.dy + tileCount) % tileCount
-    };
+    swipeArea.addEventListener('touchstart', (e) => {
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+    });
     
-    // Çarpışma kontrolü
-    if (wouldCollide(nextPos)) {
-        return false;
-    }
-    
-    // Kullanılabilir alanı hesapla
-    const space = calculateAvailableSpace(nextPos);
-    
-    // Yılan uzunluğu + güvenlik payı kadar alan olmalı
-    return space > snake.length * 1.5;
-}
-
-function isSafeMove(head, move) {
-    const nextPos = {
-        x: (head.x + move.dx + tileCount) % tileCount,
-        y: (head.y + move.dy + tileCount) % tileCount
-    };
-    
-    return !wouldCollide(nextPos);
-}
-
-function calculateAvailableSpace(startPos) {
-    const visited = new Set();
-    const queue = [startPos];
-    let space = 0;
-    
-    while (queue.length > 0) {
-        const current = queue.shift();
-        const key = `${current.x},${current.y}`;
+    swipeArea.addEventListener('touchmove', (e) => {
+        if (!gameStarted && !isDemo) {
+            startGame();
+        }
         
-        if (visited.has(key)) continue;
-        visited.add(key);
-        space++;
+        if (!gameStarted) return;
         
-        for (const dir of GRID_DIRECTIONS) {
-            const newX = (current.x + dir.dx + tileCount) % tileCount;
-            const newY = (current.y + dir.dy + tileCount) % tileCount;
-            const newPos = { x: newX, y: newY };
-            
-            if (!wouldCollide(newPos) && !visited.has(`${newX},${newY}`)) {
-                queue.push(newPos);
+        const touchX = e.touches[0].clientX;
+        const touchY = e.touches[0].clientY;
+        
+        const diffX = touchX - touchStartX;
+        const diffY = touchY - touchStartY;
+        
+        // Determine swipe direction with threshold
+        let direction = null;
+        const threshold = 20;
+        
+        if (Math.abs(diffX) > Math.abs(diffY)) {
+            // Horizontal swipe
+            if (Math.abs(diffX) > threshold) {
+                direction = diffX > 0 ? 'right' : 'left';
+            }
+        } else {
+            // Vertical swipe
+            if (Math.abs(diffY) > threshold) {
+                direction = diffY > 0 ? 'down' : 'up';
             }
         }
-    }
+        
+        // If direction changed, handle it
+        if (direction && direction !== lastDirection) {
+            lastDirection = direction;
+            handleButtonClick(direction);
+            
+            // Show indicator for the direction
+            Object.values(indicators).forEach(ind => ind.classList.remove('show'));
+            if (indicators[direction]) {
+                indicators[direction].classList.add('show');
+                setTimeout(() => {
+                    indicators[direction].classList.remove('show');
+                }, 500);
+            }
+        }
+    });
     
-    return space;
-}
-
-function wouldCollide(pos) {
-    return snake.some(segment => 
-        segment.x === pos.x && segment.y === pos.y
-    );
-}
-
-// Update the button click handlers
-function handleButtonClick(e) {
-    // This will run on desktop
-    const buttonId = e.currentTarget.id;
+    swipeArea.addEventListener('touchend', () => {
+        lastDirection = null;
+    });
     
-    // Don't need to repeat the logic as the original event listeners will handle it
-    // This is just for visual feedback
-    e.currentTarget.style.opacity = '0.7';
-    setTimeout(() => {
-        e.currentTarget.style.opacity = '1';
-    }, 150);
+    // Alternative: Add tap zones for directional movement
+    const tapZoneSize = '33%';
+    const tapZones = [
+        {name: 'up', style: {top: 0, left: tapZoneSize, width: tapZoneSize, height: tapZoneSize}},
+        {name: 'right', style: {top: tapZoneSize, right: 0, width: tapZoneSize, height: tapZoneSize}},
+        {name: 'down', style: {bottom: 0, left: tapZoneSize, width: tapZoneSize, height: tapZoneSize}},
+        {name: 'left', style: {top: tapZoneSize, left: 0, width: tapZoneSize, height: tapZoneSize}}
+    ];
+    
+    tapZones.forEach(zone => {
+        const tapZone = document.createElement('div');
+        tapZone.className = 'tap-zone';
+        Object.assign(tapZone.style, {
+            position: 'absolute',
+            ...zone.style,
+            opacity: 0.1,
+            pointerEvents: 'auto'
+        });
+        
+        tapZone.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (!gameStarted && !isDemo) {
+                startGame();
+            }
+            if (gameStarted && !isDemo) {
+                handleButtonClick(zone.name);
+                if (indicators[zone.name]) {
+                    indicators[zone.name].classList.add('show');
+                    setTimeout(() => {
+                        indicators[zone.name].classList.remove('show');
+                    }, 300);
+                }
+            }
+        });
+        
+        mobileControls.appendChild(tapZone);
+    });
+    
+    mobileControls.appendChild(swipeArea);
+    gameplaySection.appendChild(mobileControls);
+    console.log("Mobile controls created");
 }
 
-// Add demo button event listener
-demoButton.addEventListener('click', () => {
-    if (isDemo) {
-        stopDemo();
-    } else {
-        startDemo();
-    }
+// Document loaded olayını güncelleyelim
+document.addEventListener('DOMContentLoaded', function() {
+    console.log("DOM loaded");
+    
+    // Normal başlatma
+    init();
+    
+    // Oyun içi kontrolleri oluştur
+    createInGameControls();
+    
+    // Mobil cihaz kontrolü
+    checkMobileDevice();
+    
+    // Create mobile controls
+    createMobileControls();
 });
 
-// Update the init function
-function init() {
-    resizeCanvas();
-    randomFood();
-    draw();
+// Mobil cihaz kontrolü
+function checkMobileDevice() {
+    const isMobile = window.matchMedia("(max-width: 768px)").matches;
     
-    // Control button event listeners
-    upBtn.addEventListener('click', () => handleButtonClick('up'));
-    downBtn.addEventListener('click', () => handleButtonClick('down'));
-    leftBtn.addEventListener('click', () => handleButtonClick('left'));
-    rightBtn.addEventListener('click', () => handleButtonClick('right'));
-    
-    // Other event listeners
-    submitButton.addEventListener('click', handleScoreSubmission);
-    showLeaderboardBtn.addEventListener('click', () => {
-        updateLeaderboard();
-        leaderboardDiv.style.display = 'block';
-    });
-    closeLeaderboardBtn.addEventListener('click', () => {
-        leaderboardDiv.style.display = 'none';
-    });
-    playAgainBtn.addEventListener('click', resetGame);
-    
+    if (isMobile) {
+        console.log("Mobil cihaz algılandı, oyun içi kontroller aktif");
+        document.querySelector('.in-game-controls')?.classList.add('active');
+    } else {
+        console.log("Masaüstü cihaz algılandı, normal kontroller aktif");
+        document.querySelector('.in-game-controls')?.classList.remove('active');
+    }
+}
+
+// Ekran boyutu değiştiğinde kontrol et
+window.addEventListener('resize', checkMobileDevice);
+
+// Separate function to set up event listeners
+function setupEventListeners() {
     // Keyboard controls
     document.addEventListener('keydown', handleKeyDown);
-}
-
-// Helper function to convert direction string to dx/dy
-function getDirectionFromInput(direction) {
-    switch (direction) {
-        case 'up': return { dx: 0, dy: -1 };
-        case 'down': return { dx: 0, dy: 1 };
-        case 'left': return { dx: -1, dy: 0 };
-        case 'right': return { dx: 1, dy: 0 };
-        default: return null;
-    }
-}
-
-// Helper function to convert key press to dx/dy
-function getDirectionFromKey(key) {
-    switch (key) {
-        case 'ArrowUp': return { dx: 0, dy: -1 };
-        case 'ArrowDown': return { dx: 0, dy: 1 };
-        case 'ArrowLeft': return { dx: -1, dy: 0 };
-        case 'ArrowRight': return { dx: 1, dy: 0 };
-        default: return null;
-    }
-}
-
-// Add to move queue if there's space
-function addToMoveQueue(move) {
-    if (moveQueue.length < QUEUE_MAX_LENGTH) {
-        moveQueue.push(move);
-    }
-}
-
-// Check if the new move is valid based on the last actual movement
-function isValidNextMove(newMove) {
-    if (!newMove) return false;
     
-    // Get the direction to check against (either the last queued move or the current direction)
-    const checkAgainst = moveQueue.length > 0 ? 
-        moveQueue[moveQueue.length - 1] : 
-        { dx, dy };
-
-    // Can't move in opposite direction
-    return !(
-        (checkAgainst.dx === 1 && newMove.dx === -1) ||
-        (checkAgainst.dx === -1 && newMove.dx === 1) ||
-        (checkAgainst.dy === 1 && newMove.dy === -1) ||
-        (checkAgainst.dy === -1 && newMove.dy === 1)
-    );
-}
-
-// Update the score display function
-function updateScoreDisplay() {
-    const level = Math.floor(foodCount / 10) + 1;
-    document.getElementById('score').textContent = score;
-    document.getElementById('level').textContent = level;
-}
-
-// Add store UI
-function createStoreUI() {
-  const storeHTML = `
-    <div id="store" class="modal">
-      <div class="store-content">
-        <h2>Store</h2>
-        <div class="store-sections">
-          <div class="themes-section">
-            <h3>Themes</h3>
-            ${premiumFeatures.themes.map(theme => `
-              <div class="store-item">
-                <span>${theme.name}</span>
-                <button onclick="purchaseTheme('${theme.id}')">$${theme.price}</button>
-              </div>
-            `).join('')}
-          </div>
-          <div class="powerups-section">
-            <h3>Power-ups</h3>
-            ${premiumFeatures.powerups.map(powerup => `
-              <div class="store-item">
-                <span>${powerup.name}</span>
-                <button onclick="purchasePowerup('${powerup.id}')">$${powerup.price}</button>
-              </div>
-            `).join('')}
-          </div>
-        </div>
-      </div>
-    </div>
-  `;
-}
-
-function upgradeToPremium() {
-  // Implement payment processing
-  stripe.redirectToCheckout({
-    lineItems: [{
-      price: 'price_premium_version',
-      quantity: 1
-    }],
-    mode: 'payment',
-    successUrl: window.location.origin + '/premium-success',
-    cancelUrl: window.location.origin + '/premium-cancel',
-  });
-}
-
-// Add these functions to improve button handling
-function setupButtonListeners() {
-    // Get all game buttons
-    const gameButtons = document.querySelectorAll('.game-btn');
+    // Button controls
+    const upBtn = document.getElementById('upBtn');
+    const downBtn = document.getElementById('downBtn');
+    const leftBtn = document.getElementById('leftBtn');
+    const rightBtn = document.getElementById('rightBtn');
     
-    // Add event listeners to each button
-    gameButtons.forEach(button => {
-        // Remove any existing listeners
-        button.removeEventListener('touchstart', handleButtonTouch);
-        button.removeEventListener('click', handleButtonClick);
+    // Add event listeners to all buttons
+    if (upBtn && downBtn && leftBtn && rightBtn) {
+        upBtn.addEventListener('click', () => handleButtonClick('up'));
+        downBtn.addEventListener('click', () => handleButtonClick('down'));
+        leftBtn.addEventListener('click', () => handleButtonClick('left'));
+        rightBtn.addEventListener('click', () => handleButtonClick('right'));
         
-        // Add touchstart listener for mobile
-        button.addEventListener('touchstart', handleButtonTouch, { passive: false });
-        
-        // Add click listener for desktop
-        button.addEventListener('click', handleButtonClick);
-    });
-}
-
-function handleButtonTouch(e) {
-    e.preventDefault(); // Prevent default touch behavior
+        // Mobile touch events
+        upBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            handleButtonClick('up');
+        });
+        downBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            handleButtonClick('down');
+        });
+        leftBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            handleButtonClick('left');
+        });
+        rightBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            handleButtonClick('right');
+        });
+    } else {
+        console.error("Control buttons not found!");
+    }
     
-    // Get button ID
-    const buttonId = e.currentTarget.id;
+    // Other buttons
+    if (playAgainBtn) {
+        playAgainBtn.addEventListener('click', resetGame);
+    }
     
-    // Handle button action based on ID
-    switch(buttonId) {
-        case 'playAgain':
-            resetGame();
-            break;
-        case 'demoButton':
+    if (demoButton) {
+        demoButton.addEventListener('click', () => {
             if (isDemo) {
                 stopDemo();
             } else {
                 startDemo();
             }
-            break;
-        case 'showLeaderboard':
-            updateLeaderboard();
-            leaderboardDiv.style.display = 'block';
-            break;
+        });
     }
     
-    // Add visual feedback
-    e.currentTarget.style.opacity = '0.7';
-    setTimeout(() => {
-        e.currentTarget.style.opacity = '1';
-    }, 150);
+    if (showLeaderboardBtn) {
+        showLeaderboardBtn.addEventListener('click', () => {
+            updateLeaderboard();
+            leaderboardDiv.style.display = 'block';
+        });
+    }
+    
+    if (closeLeaderboardBtn) {
+        closeLeaderboardBtn.addEventListener('click', () => {
+            leaderboardDiv.style.display = 'none';
+        });
+    }
+    
+    if (submitButton) {
+        submitButton.addEventListener('click', handleScoreSubmission);
+    }
+    
+    // Modal outside click
+    window.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            resetGame();
+        }
+    });
+
+    // Food guide
+    const foodGuide = document.getElementById('foodGuide');
+    const closeGuide = document.getElementById('closeGuide');
+
+    // Add info button to controls section
+    const infoBtn = document.createElement('button');
+    infoBtn.id = 'infoBtn';
+    infoBtn.className = 'game-btn';
+    infoBtn.innerHTML = '<i class="fas fa-info-circle"></i> Guide';
+    document.querySelector('.game-buttons').appendChild(infoBtn);
+
+    // Toggle food guide
+    infoBtn.addEventListener('click', () => {
+        foodGuide.style.display = foodGuide.style.display === 'block' ? 'none' : 'block';
+    });
+
+    // Close guide button
+    closeGuide.addEventListener('click', () => {
+        foodGuide.style.display = 'none';
+    });
 }
 
-// Call this function when the page loads
-document.addEventListener('DOMContentLoaded', function() {
-    setupButtonListeners();
+// Oyun alanı kenarlarına yön okları ekle
+function createDirectionArrows() {
+    const gameplaySection = document.querySelector('.gameplay-section');
     
-    // Prevent unwanted page scrolling/zooming on touch devices
-    document.addEventListener('touchmove', function(e) {
-        if (e.target.classList.contains('game-btn') || e.target.classList.contains('control-btn')) {
+    if (!gameplaySection) return;
+    
+    // Ok işaretleri container oluştur
+    const directionArrows = document.createElement('div');
+    directionArrows.className = 'direction-arrows';
+    
+    // Dört yöne ok ekle
+    const arrows = [
+        { direction: 'up', icon: 'fa-chevron-up', class: 'arrow-up' },
+        { direction: 'right', icon: 'fa-chevron-right', class: 'arrow-right' },
+        { direction: 'down', icon: 'fa-chevron-down', class: 'arrow-down' },
+        { direction: 'left', icon: 'fa-chevron-left', class: 'arrow-left' }
+    ];
+    
+    // Ok elementleri oluştur
+    const arrowElements = {};
+    arrows.forEach(arrow => {
+        const arrowElement = document.createElement('div');
+        arrowElement.className = `arrow ${arrow.class}`;
+        arrowElement.innerHTML = `<i class="fas ${arrow.icon}"></i>`;
+        directionArrows.appendChild(arrowElement);
+        arrowElements[arrow.direction] = arrowElement;
+        
+        // Hem mouse hem de dokunma olayları ekle
+        arrowElement.addEventListener('mousedown', (e) => {
+            handleArrowClick(arrow.direction);
+        });
+        
+        arrowElement.addEventListener('touchstart', (e) => {
             e.preventDefault();
-        }
-    }, { passive: false });
+            handleArrowClick(arrow.direction);
+        });
+    });
     
-    // Setup original game
-    resizeCanvas();
-    randomFood();
-    draw();
-    updateLeaderboard();
-}); 
+    // Ok tıklaması için fonksiyon
+    function handleArrowClick(direction) {
+        // Okta vurgu göster
+        const arrow = arrowElements[direction];
+        arrow.classList.add('active');
+        
+        // Yönü değiştir
+        handleButtonClick(direction);
+        
+        // Vurguyu kaldır
+        setTimeout(() => {
+            arrow.classList.remove('active');
+        }, 300);
+    }
+    
+    // Ok yönünü güncelle
+    function updateDirectionArrows() {
+        // Tüm okları normal duruma getir
+        Object.values(arrowElements).forEach(arrow => {
+            arrow.classList.remove('active');
+        });
+        
+        // Mevcut hareket yönündeki oku vurgula
+        if (dx === 0 && dy === -1) arrowElements.up.classList.add('active');
+        else if (dx === 1 && dy === 0) arrowElements.right.classList.add('active');
+        else if (dx === 0 && dy === 1) arrowElements.down.classList.add('active');
+        else if (dx === -1 && dy === 0) arrowElements.left.classList.add('active');
+    }
+    
+    // Oyun güncellemesi sırasında okları da güncelle
+    const originalUpdate = update;
+    update = function() {
+        originalUpdate();
+        updateDirectionArrows();
+    };
+    
+    // Klavye olaylarında okları güncelle
+    document.addEventListener('keydown', (e) => {
+        if (e.key.startsWith('Arrow')) {
+            const direction = e.key.substring(5).toLowerCase();
+            if (arrowElements[direction]) {
+                arrowElements[direction].classList.add('active');
+                setTimeout(() => {
+                    arrowElements[direction].classList.remove('active');
+                }, 300);
+            }
+        }
+    });
+    
+    // Oyun alanına ekle
+    gameplaySection.appendChild(directionArrows);
+    console.log("Yön okları eklendi");
+} 

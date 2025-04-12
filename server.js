@@ -4,8 +4,9 @@ const cors = require('cors');
 const path = require('path');
 const app = express();
 
-// Use Heroku's provided port or default to 3000
+// Port configuration
 const PORT = process.env.PORT || 3000;
+const HOST = 'localhost';
 
 // Middleware
 app.use(cors());
@@ -93,13 +94,21 @@ app.use((err, req, res, next) => {
     res.status(500).json({ error: 'Something went wrong!' });
 });
 
-// Start server
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+// Start server with specific host and port
+app.listen(PORT, HOST, () => {
+    console.log(`Server running at http://${HOST}:${PORT}`);
+    console.log('Press Ctrl+C to stop the server');
 });
 
 // Handle process termination
 process.on('SIGTERM', () => {
+    db.close(() => {
+        console.log('Database connection closed');
+        process.exit(0);
+    });
+});
+
+process.on('SIGINT', () => {
     db.close(() => {
         console.log('Database connection closed');
         process.exit(0);

@@ -13,8 +13,8 @@
         <!-- Score Section -->
         <div class="score-section">
             <div class="score">
-                <span class="score-text">Score: <span id="score">0</span></span>
-                <span class="level-text">Level: <span id="level">1</span></span>
+                <span class="score-text">Score: 0</span>
+                <span class="level-text">Level: 1</span>
             </div>
         </div>
         
@@ -39,19 +39,21 @@
                     <i class="fas fa-chevron-down"></i>
                 </button>
             </div>
-        </div>    
+            
             <div class="game-buttons">
                 <button id="playAgain" class="game-btn">
-                    <i class="fas fa-redo"></i> Play
+                    <i class="fas fa-redo"></i> Again
                 </button>
                 <button id="demoButton" class="game-btn">
                     <i class="fas fa-play"></i> Demo
                 </button>
                 <button id="showLeaderboard" class="game-btn">
-                    <i class="fas fa-trophy"></i> Top
+                    <i class="fas fa-trophy"></i> Scores
                 </button>
             </div>
-            <div></div>
+            
+            <div class="controls-separator"></div>
+        </div>
     </div>
 
     <!-- Leaderboard Modal -->
@@ -67,7 +69,7 @@
     <div id="nicknameModal" class="modal">
         <div class="modal-content">
             <h2>Game Over</h2>
-            <p id="finalScore"></p>
+            <div id="finalScore"></div>
             <input type="text" id="nickname" placeholder="Enter your nickname">
             <button id="submitScore">Submit Score</button>
         </div>
@@ -78,6 +80,28 @@
 
     <!-- Add Google AdSense -->
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbuild.js"></script>
+
+    <!-- Add this before closing body tag -->
+    <div class="food-guide" id="foodGuide">
+        <h3>Food Guide</h3>
+        <div class="food-item">
+            <img src="assets/png/apple.png" class="food-icon" alt="Apple">
+            <span class="food-info">Regular food (+10 pts)</span>
+        </div>
+        <div class="food-item">
+            <img src="assets/png/oliebol.png" class="food-icon" alt="Oliebol">
+            <span class="food-info">Bonus food (+25 pts)</span>
+        </div>
+        <div class="food-item">
+            <img src="assets/png/easter_egg.png" class="food-icon" alt="Easter Egg">
+            <span class="food-info">Double growth (+15 pts)</span>
+        </div>
+        <div class="food-item">
+            <img src="assets/png/bomb.png" class="food-icon" alt="Bomb">
+            <span class="food-info">Avoid bombs!</span>
+        </div>
+        <button id="closeGuide">Close</button>
+    </div>
 
     <script src="game.js"></script>
 </body>

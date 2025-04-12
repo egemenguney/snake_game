@@ -1,40 +1,43 @@
 /* Import Google Fonts */
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Press+Start+2P&display=swap');
 
-/* Base styles */
 * {
     box-sizing: border-box;
-    margin: 0;
-    padding: 0;
+    user-select: none;
 }
 
-html, body {
-    height: 100%;
-    width: 100%;
-    overflow: hidden;
+body {
     margin: 0;
     padding: 0;
     background-color: #1e1e1e;
     font-family: 'Press Start 2P', cursive;
-}
-
-/* Main container with grid layout */
-.game-container {
-    display: grid;
-    grid-template-rows: auto 1fr auto;
     height: 100vh;
-    width: 100vw;
+    width: 100%;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    z-index: 0;
 }
 
-/* Header section for score */
-.score-section {
-    grid-row: 1;
+/* Main game container */
+.game-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
     width: 100%;
-    padding: 5px;
-    background-color: #1e1e1e;
+    height: 100vh;
+    padding: 0;
+    position: relative;
+}
+
+/* Score section at top */
+.score-section {
+    width: 100%;
+    padding: 5px 0;
     z-index: 20;
-    border-bottom: 1px solid #333;
+    background-color: rgba(30, 30, 30, 0.9);
 }
 
 .score {
@@ -43,174 +46,284 @@ html, body {
     justify-content: center;
     align-items: center;
     gap: 15px;
+    text-align: center;
+    width: 100%;
+    padding: 5px;
     height: 30px;
 }
 
 .score-text {
     color: #00ff00;
+    font-family: 'Press Start 2P', cursive;
     font-size: 0.8rem;
+    text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
 }
 
 .level-text {
     color: #ffffff;
+    font-family: 'Press Start 2P', cursive;
     font-size: 0.7rem;
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
 }
 
-/* Main game area */
+/* Gameplay area in middle */
 .gameplay-section {
-    grid-row: 2;
-    width: 100%;
+    flex: 1;
     display: flex;
     justify-content: center;
     align-items: center;
-    overflow: hidden;
+    width: 100%;
+    margin: 10px 0;
+    padding: 0;
+    overflow: visible;
+    position: relative;
+    min-height: 200px;
 }
 
 #gameCanvas {
-    max-width: 90vmin;
-    max-height: 90vmin;
-    aspect-ratio: 1 / 1;
+    width: min(90vmin, 350px);
+    height: min(90vmin, 350px);
     border: 2px solid #333;
+    border-radius: 5px;
+    display: block;
+    background-color: #2d2d2d;
 }
 
-/* Controls and buttons section */
+/* Controls section at bottom */
 .controls-section {
+    width: 100%;
+    padding-bottom: 10px;
+    margin-top: 5px;
+    min-height: 170px;
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 5px 10px;
-    background-color: #1e1e1e;
-    border-top: 1px solid #333;
+    background-color: rgba(30, 30, 30, 0.9);
+    z-index: 20;
 }
 
 #controls {
+    position: relative;
     display: grid;
-    width: min(90px);
     grid-template-columns: repeat(3, 1fr);
     grid-template-rows: repeat(3, 1fr);
-    gap: 3px;
-    aspect-ratio: 1 / 1;
-    
+    gap: 5px;
+    width: min(150px, 45vw);
+    height: min(150px, 45vw);
+    margin-bottom: 5px;
 }
 
-.control-btn {
-    aspect-ratio: 1 / 1;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background-color: rgba(0, 255, 0, 0.1);
-    border: 1px solid rgba(0, 255, 0, 0.3);
-    color: #00ff00;
-}
-
-.control-btn i {
-    font-size: clamp(10px, 3vw, 20px);
-}
-
+/* Control buttons positioning */
 #upBtn { grid-area: 1 / 2 / 2 / 3; }
 #leftBtn { grid-area: 2 / 1 / 3 / 2; }
 #rightBtn { grid-area: 2 / 3 / 3 / 4; }
 #downBtn { grid-area: 2 / 2 / 2 / 3; }
 
+/* Control button styling */
+.control-btn {
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(0, 255, 0, 0.1);
+    border: 1px solid rgba(0, 255, 0, 0.3);
+    border-radius: 8px;
+    color: #00ff00;
+    position: relative;
+    z-index: 50;
+    cursor: pointer;
+}
+
+.control-btn:active {
+    background-color: rgba(0, 255, 0, 0.3);
+    transform: scale(0.95);
+}
+
+/* Touch uyumluluğu için ek stil */
+.control-btn::before {
+    content: "";
+    position: absolute;
+    top: -5px;
+    left: -5px;
+    right: -5px;
+    bottom: -5px;
+    z-index: -1;
+}
+
+.control-btn i {
+    font-size: clamp(14px, 4vw, 20px);
+}
+
 /* Game buttons container */
 .game-buttons {
-    display: flex; /* Yatay sıralama için */
-    flex-direction: row;
-    justify-content: center;
-    gap: 5px;
-    padding-bottom: 50px;
+    width: 90%;
+    max-width: 280px;
+    display: flex;
+    gap: 8px;
+    margin-top: 5px;
+    position: relative;
+    z-index: 30;
+}
+
+/* Separator styling */
+.controls-separator {
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(to right, transparent, rgba(0, 255, 0, 0.3), transparent);
+    margin-top: 10px;
+    position: relative;
+    z-index: 20;
+}
+
+/* Standard sized screens - vertical buttons */
+@media screen and (min-height: 600px) {
+    .game-buttons {
+        flex-direction: column;
+    }
+}
+
+/* Medium and small screens - horizontal buttons */
+@media screen and (max-height: 600px) {
+    .game-buttons {
+        flex-direction: row;
+        justify-content: space-between;
+        max-width: 90%;
+        gap: 5px;
+    }
+    
+    .game-btn {
+        min-height: 30px;
+        font-size: 0.5rem;
+    }
+}
+
+/* Daha küçük mobil cihazlar için ek optimizasyon */
+@media screen and (max-height: 500px) {
+    .controls-section {
+        flex-direction: column;
+        justify-content: flex-start;
+        min-height: auto;
+        padding: 5px 10px;
+    }
+    
+    #controls {
+        margin: 0;
+        width: min(90px, 30vw);
+        height: min(90px, 30vw);
+    }
+    
+    .game-buttons {
+        width: 100%;
+        max-width: none;
+        flex-direction: row;
+        justify-content: center;
+        gap: 10px;
+        margin: 5px 0;
+    }
+    
+    .game-btn {
+        flex: 1;
+        max-width: 100px;
+        min-height: 30px;
+        padding: 4px;
+        font-size: 0.45rem;
+        white-space: nowrap;
+    }
+
+    .controls-separator {
+        margin-top: 5px;
+    }
+}
+
+/* Very small screens */
+@media screen and (max-height: 400px) {
+    .controls-section {
+        padding: 3px 8px;
+    }
+    
+    .game-buttons {
+        gap: 6px;
+    }
+    
+    .game-btn {
+        min-height: 25px;
+        padding: 3px;
+        font-size: 0.4rem;
+    }
+    
+    .game-btn i {
+        font-size: 0.5rem;
+        margin-right: 2px;
+    }
+    
+    #controls {
+        width: min(80px, 25vw);
+        height: min(80px, 25vw);
+    }
+
+    .controls-separator {
+        margin-top: 3px;
+    }
+}
+
+/* Landscape mode optimization */
+@media screen and (max-height: 450px) and (orientation: landscape) {
+    .controls-section {
+        flex-direction: row;
+    }
+    
+    .game-buttons {
+        flex-direction: row;
+        width: 65%;
+        max-width: none;
+    }
+    
+    .game-btn {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
 }
 
 /* Game button styling */
 .game-btn {
     font-family: 'Press Start 2P', cursive;
-    font-size: 0.5rem;
-    padding: 2px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 3px;
-    background-color: rgba(0, 255, 0, 0.1);
-    color: #00ff00;
-    border: 1px solid rgba(0, 255, 0, 0.3);
-    border-radius: 4px;
-    min-height: 30px;
-    flex: 1; /* Eşit boyut */
-}
-
-/* Modal styles */
-.modal, #leaderboard {
-    position: fixed;
-    top: 0;
-    left: 0;
+    font-size: 0.6rem;
+    padding: 10px 7px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    border: 1px solid;
     width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.85);
-    backdrop-filter: blur(5px);
-    z-index: 1000;
-    display: none;
-}
-
-.modal-content, .leaderboard-content {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background-color: rgba(45, 45, 45, 0.95);
-    padding: 1.5rem;
-    border-radius: 15px;
-    box-shadow: 0 0 20px rgba(0, 255, 0, 0.2);
-    border: 1px solid rgba(0, 255, 0, 0.3);
     text-align: center;
-    width: 90%;
-    max-width: 350px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    min-height: 36px;
+    position: relative;
+    overflow: visible;
+    -webkit-tap-highlight-color: rgba(0, 255, 0, 0.2);
+    touch-action: manipulation;
 }
 
-
-@media screen and (max-height: 500px) {
-    
-    .controls-section {
-        flex-direction: column;
-        align-items: center;
-    }
-    
-    #controls {
-        max-height: 80px;
-        margin: 0;
-        
-    }
-    
-    .game-buttons {
-        margin: 0;
-        gap: 5px;
-    }
-    
-    .game-btn {
-        min-height: 25px;
-        padding: 5px;
-    }
-    
-    .gameplay-section {
-        margin: 2px 0;
-    }
-    
-    .score {
-        height: 20px;
-    }
-    
-    .score-text {
-        font-size: 0.6rem;
-    }
-    
-    .level-text {
-        font-size: 0.5rem;
-    }
-    
-   
+.game-btn::before {
+    content: "";
+    position: absolute;
+    top: -5px;
+    left: -5px;
+    right: -5px;
+    bottom: -5px;
+    z-index: -1;
 }
 
-
-
+.game-btn i {
+    font-size: 0.7rem;
+}
 
 /* Button colors */
 #playAgain {
@@ -232,6 +345,34 @@ html, body {
 }
 
 /* Leaderboard Styles */
+#leaderboard {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(5px);
+    z-index: 1000;
+}
+
+.leaderboard-content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: rgba(45, 45, 45, 0.95);
+    padding: 2rem;
+    border-radius: 15px;
+    box-shadow: 0 0 20px rgba(0, 255, 0, 0.2);
+    border: 1px solid rgba(0, 255, 0, 0.3);
+    min-width: 300px;
+    max-width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
 .leaderboard-content h2 {
     font-family: 'Press Start 2P', cursive;
     color: #00ff00;
@@ -295,6 +436,33 @@ html, body {
 }
 
 /* Game Over Modal */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(5px);
+    z-index: 1000;
+}
+
+.modal-content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: rgba(45, 45, 45, 0.95);
+    padding: 1.5rem;
+    border-radius: 15px;
+    box-shadow: 0 0 20px rgba(0, 255, 0, 0.2);
+    border: 1px solid rgba(0, 255, 0, 0.3);
+    text-align: center;
+    width: 90%;
+    max-width: 350px;
+}
+
 .modal-content h2 {
     font-family: 'Press Start 2P', cursive;
     color: #00ff00;
@@ -331,5 +499,464 @@ html, body {
 }
 
 /* Media query for different screen sizes */
+@media screen and (max-height: 700px) {
+    .gameplay-section {
+        flex: 0.7;
+        min-height: 160px;
+    }
+    
+    #controls {
+        width: min(120px, 40vw);
+        height: min(120px, 40vw);
+        gap: 4px;
+    }
+    
+    .controls-section {
+        min-height: 150px;
+        padding-bottom: 5px;
+    }
+    
+    .game-btn {
+        padding: 5px;
+        font-size: 0.5rem;
+        height: 25px;
+    }
+    
+    .game-buttons {
+        gap: 3px;
+    }
+    
+    .control-btn i {
+        font-size: clamp(12px, 3vw, 18px);
+    }
+}
 
+@media screen and (max-height: 600px) {
+    #gameCanvas {
+        width: min(75vmin, 280px);
+        height: min(75vmin, 280px);
+    }
+    
+    .gameplay-section {
+        flex: 0.6;
+        min-height: 140px;
+        margin: 5px 0;
+    }
+    
+    .controls-section {
+        min-height: 130px;
+    }
+    
+    #controls {
+        width: min(100px, 35vw);
+        height: min(100px, 35vw);
+    }
+    
+    .game-buttons {
+        max-width: 250px;
+        margin-top: 3px;
+    }
+    
+    .game-btn {
+        height: 22px;
+        font-size: 0.45rem;
+    }
+    
+    .score-text {
+        font-size: 0.7rem;
+    }
+    
+    .level-text {
+        font-size: 0.5rem;
+    }
+}
 
+/* Smaller screens adjustments */
+@media screen and (max-width: 400px) {
+    .score {
+        gap: 10px;
+        height: 25px;
+    }
+    
+    .score-text {
+        font-size: 0.7rem;
+    }
+    
+    .level-text {
+        font-size: 0.6rem;
+    }
+}
+
+/* Very small screens */
+@media screen and (max-width: 320px) {
+    .score {
+        gap: 8px;
+        height: 22px;
+    }
+    
+    .score-text {
+        font-size: 0.6rem;
+    }
+    
+    .level-text {
+        font-size: 0.5rem;
+    }
+}
+
+/* Game hints for food items */
+.food-guide {
+    position: fixed;
+    bottom: 10px;
+    left: 10px;
+    background-color: rgba(0, 0, 0, 0.7);
+    padding: 10px;
+    border-radius: 5px;
+    color: white;
+    font-size: 0.7rem;
+    z-index: 100;
+    display: none;
+}
+
+.food-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 5px;
+}
+
+.food-icon {
+    width: 20px;
+    height: 20px;
+    margin-right: 10px;
+}
+
+.food-info {
+    font-family: 'Poppins', sans-serif;
+}
+
+/* Food Guide Overlay */
+.food-guide-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 200;
+}
+
+.guide-content {
+    background-color: #222;
+    padding: 15px;
+    border-radius: 10px;
+    border: 2px solid #00ff00;
+    text-align: center;
+    max-width: 90%;
+}
+
+.guide-content h3 {
+    font-family: 'Press Start 2P', cursive;
+    color: #00ff00;
+    font-size: 1rem;
+    margin-bottom: 10px;
+}
+
+.food-items {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.food-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background-color: rgba(0, 255, 0, 0.1);
+    padding: 5px 10px;
+    border-radius: 5px;
+}
+
+.food-item img {
+    width: 24px;
+    height: 24px;
+}
+
+.food-item span {
+    font-family: 'Press Start 2P', cursive;
+    color: white;
+    font-size: 0.7rem;
+}
+
+#closeGuideBtn {
+    background-color: #00ff00;
+    color: #000;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 5px;
+    font-family: 'Press Start 2P', cursive;
+    font-size: 0.7rem;
+    cursor: pointer;
+}
+
+#closeGuideBtn:hover {
+    background-color: #00cc00;
+}
+
+/* Style the info button */
+#infoBtn {
+    background-color: rgba(0, 150, 255, 0.1);
+    color: #0096ff;
+    border-color: #0096ff;
+}
+
+#infoBtn:hover {
+    background-color: rgba(0, 150, 255, 0.2);
+}
+
+/* In-game control areas along the edges */
+.in-game-controls {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 50;
+}
+
+/* Control areas taking up entire edges */
+.game-control-area {
+    position: absolute;
+    background: transparent;
+    opacity: 0;
+    pointer-events: auto;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Small visible indicator in center of each area */
+.game-control-area::after {
+    content: "";
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    transition: all 0.15s ease;
+}
+
+/* Active state of control area */
+.game-control-area.active::after {
+    background-color: rgba(0, 255, 0, 0.3);
+    transform: scale(1.3);
+}
+
+/* Position control areas to take up entire edges */
+#gameUpArea {
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 33%;
+}
+
+#gameRightArea {
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 33%;
+}
+
+#gameDownArea {
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 33%;
+}
+
+#gameLeftArea {
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 33%;
+}
+
+/* Hide default controls on mobile */
+@media screen and (max-width: 768px) {
+    #controls {
+        display: none;
+    }
+    
+    .gameplay-section {
+        position: relative;
+        margin: 10px auto;
+        border-radius: 5px;
+        overflow: hidden;
+    }
+    
+    #gameCanvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+        max-width: none;
+        max-height: none;
+    }
+}
+
+/* Hide in-game controls on desktop */
+@media screen and (min-width: 769px) {
+    .in-game-controls {
+        display: none;
+    }
+}
+
+/* Improved mobile controls */
+.mobile-controls {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 50;
+    touch-action: none;
+}
+
+/* Create swipe areas covering the entire game area */
+.swipe-area {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    pointer-events: auto;
+    top: 0;
+    left: 0;
+}
+
+/* Direction indicators that appear on swipe */
+.direction-indicator {
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: rgba(0, 255, 0, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    pointer-events: none;
+}
+
+.direction-indicator i {
+    color: white;
+    font-size: 20px;
+}
+
+/* Position indicators on each edge */
+.indicator-up {
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.direction-indicator.show {
+    opacity: 1;
+}
+
+/* Game layout adjustments for mobile */
+@media screen and (max-width: 768px) {
+    .gameplay-section {
+        position: relative;
+        margin: 10px auto;
+        touch-action: none;
+    }
+    
+    #gameCanvas {
+        width: 100%;
+        height: 100%;
+        max-width: none;
+        max-height: none;
+    }
+    
+    /* Hide desktop controls */
+    #controls {
+        display: none;
+    }
+}
+
+/* Oyun alanı kenarlarındaki yön okları */
+.direction-arrows {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 40;
+}
+
+.arrow {
+    position: absolute;
+    color: rgba(0, 255, 0, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    transition: all 0.2s ease;
+}
+
+.arrow i {
+    filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.4));
+}
+
+.arrow-up {
+    top: 5px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.arrow-right {
+    right: 5px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.arrow-down {
+    bottom: 5px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.arrow-left {
+    left: 5px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+/* Aktif ok vurgusu */
+.arrow.active {
+    color: rgba(0, 255, 0, 0.8);
+    transform: scale(1.2) translateX(-40%);
+}
+
+.arrow-right.active {
+    transform: scale(1.2) translateY(-40%);
+}
+
+.arrow-down.active {
+    transform: scale(1.2) translateX(-40%);
+}
+
+.arrow-left.active {
+    transform: scale(1.2) translateY(-40%);
+}
+
+/* Tüm ekran boyutlarında göster */
+@media screen and (min-width: 769px) {
+    .direction-arrows {
+        display: block;
+    }
+} 
